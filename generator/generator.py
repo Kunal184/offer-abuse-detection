@@ -260,10 +260,10 @@ def main(seed=None):
     payments = generate_payment_instruments(int(n_customers * 1.5))
     ips = generate_ips(2000)
     
-    customer_devices = assign_entities_to_customers(customers, devices, "device_id", shared_ratio=0.1, max_shared=4)
-    customer_addresses = assign_entities_to_customers(customers, addresses, "address_id", shared_ratio=0.1, max_shared=4)
-    customer_payments = assign_entities_to_customers(customers, payments, "payment_id", shared_ratio=0.075, max_shared=3)
-    customer_ips = assign_entities_to_customers(customers, ips, "ip_address", shared_ratio=0.15, max_shared=5)
+    customer_devices = assign_entities_to_customers(customers, devices, "device_id", shared_ratio=0.04, max_shared=2)
+    customer_addresses = assign_entities_to_customers(customers, addresses, "address_id", shared_ratio=0.04, max_shared=2)
+    customer_payments = assign_entities_to_customers(customers, payments, "payment_id", shared_ratio=0.02, max_shared=2)
+    customer_ips = assign_entities_to_customers(customers, ips, "ip_address", shared_ratio=0.03, max_shared=2)
     
     orders = generate_orders(customers)
     offers = generate_offers()
