@@ -1,0 +1,4 @@
+.venv/
+AGENT_CONTEXT.md
+__pycache__/
+*.pyc
