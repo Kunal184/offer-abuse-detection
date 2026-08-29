@@ -1,109 +1,139 @@
+"""
+Detailed codebase analysis script - examines data leakage and synthetic artifacts
+"""
 import pandas as pd
 import numpy as np
-import os
 
-print("Starting analysis...")
+def analyze_codebase():
+    print("="*80)
+    print("OFFER-ABUSE DETECTION SYSTEM - CODEBASE ANALYSIS")
+    print("="*80)
 
-# Load data
-customers = pd.read_csv('data/customers.csv')
-customer_devices = pd.read_csv('data/customer_devices.csv')
-customer_addresses = pd.read_csv('data/customer_addresses.csv')
-customer_payments = pd.read_csv('data/customer_payments.csv')
-orders = pd.read_csv('data/orders.csv')
-offer_redemptions = pd.read_csv('data/offer_redemptions.csv')
-ground_truth = pd.read_csv('data/ground_truth.csv')
+    # Load data
+    gt = pd.read_csv('data/ground_truth.csv')
+    feat = pd.read_csv('data/customer_features.csv')
+    merged = feat.merge(gt, on='customer_id')
 
-# 1. Class balance
-total_customers = len(customers)
-abusers = ground_truth['abuse_group_id'].notna().sum()
-legit = total_customers - abusers
-print(f"Class Balance: {legit} Legitimate, {abusers} Abusers")
+    legit = merged[merged['abuse_group_id'].isna()]
+    abuse = merged[merged['abuse_group_id'].notna()]
 
-# Add label to customers
-customers = customers.merge(ground_truth, on='customer_id')
-customers['is_abuse'] = customers['abuse_group_id'].notna()
+    print("\n1. DATASET COMPOSITION")
+    print("-" * 80)
+    print(f"Total customers: {len(gt)}")
+    print(f"Legitimate: {len(legit)} ({len(legit)/len(gt)*100:.1f}%)")
+    print(f"Abuse: {len(abuse)} ({len(abuse)/len(gt)*100:.1f}%)")
+    print(f"Abuse groups: {gt['abuse_group_id'].nunique() - 1}")
 
-# 2. Distributions
-print("\n--- Distributions (Legit vs Abuse) ---")
+    abuse_groups = gt[gt['abuse_group_id'].notna()].groupby('abuse_group_id').size()
+    print(f"\nAbuse group size distribution:")
+    print(f"  Min: {abuse_groups.min()}, Max: {abuse_groups.max()}, Mean: {abuse_groups.mean():.1f}")
 
-# Shared devices
-dev_counts = customer_devices['device_id'].value_counts().reset_index()
-dev_counts.columns = ['device_id', 'dev_shared_count']
-cd = customer_devices.merge(dev_counts, on='device_id')
-cd = cd.merge(customers[['customer_id', 'is_abuse']], on='customer_id')
-print("Avg Device Sharing:")
-print(cd.groupby('is_abuse')['dev_shared_count'].mean())
+    print("\n2. KEY FEATURE SEPARATION (Legitimate vs Abuse)")
+    print("-" * 80)
 
-# Shared addresses
-addr_counts = customer_addresses['address_id'].value_counts().reset_index()
-addr_counts.columns = ['address_id', 'addr_shared_count']
-ca = customer_addresses.merge(addr_counts, on='address_id')
-ca = ca.merge(customers[['customer_id', 'is_abuse']], on='customer_id')
-print("Avg Address Sharing:")
-print(ca.groupby('is_abuse')['addr_shared_count'].mean())
+    features_to_check = [
+        'cluster_size',
+        'unique_connected_customers',
+        'max_ip_user_count',
+        'time_to_first_order_hours',
+        'order_redemption_rate',
+        'average_spend',
+        'account_age_days'
+    ]
 
-# Shared payments
-pay_counts = customer_payments['payment_id'].value_counts().reset_index()
-pay_counts.columns = ['payment_id', 'pay_shared_count']
-cp = customer_payments.merge(pay_counts, on='payment_id')
-cp = cp.merge(customers[['customer_id', 'is_abuse']], on='customer_id')
-print("Avg Payment Sharing:")
-print(cp.groupby('is_abuse')['pay_shared_count'].mean())
+    print(f"{'Feature':<35} | {'Legit Mean':<12} | {'Abuse Mean':<12} | {'Separation':<15}")
+    print("-" * 80)
+    for f in features_to_check:
+        legit_mean = legit[f].mean()
+        abuse_mean = abuse[f].mean()
 
-# Account creation timing
-customers['created_at'] = pd.to_datetime(customers['created_at'])
-abuse_times = customers[customers['is_abuse']].groupby('abuse_group_id')['created_at']
-print("\nTime span of account creation in abuse groups (hours):")
-print(abuse_times.apply(lambda x: (x.max() - x.min()).total_seconds() / 3600).describe())
+        # Calculate separation ratio
+        if legit_mean != 0:
+            ratio = abuse_mean / legit_mean
+        else:
+            ratio = float('inf') if abuse_mean > 0 else 1.0
 
-# Order counts
-order_counts = orders.groupby('customer_id').size().reset_index(name='order_count')
-cust_orders = customers.merge(order_counts, on='customer_id', how='left')
-cust_orders['order_count'] = cust_orders['order_count'].fillna(0)
-print("\nAvg Order Counts:")
-print(cust_orders.groupby('is_abuse')['order_count'].mean())
+        print(f"{f:<35} | {legit_mean:<12.2f} | {abuse_mean:<12.2f} | {ratio:<15.2f}x")
 
-# Offer redemptions
-red_counts = offer_redemptions.groupby('customer_id').size().reset_index(name='redemption_count')
-cust_reds = customers.merge(red_counts, on='customer_id', how='left')
-cust_reds['redemption_count'] = cust_reds['redemption_count'].fillna(0)
-print("\nAvg Offer Redemptions:")
-print(cust_reds.groupby('is_abuse')['redemption_count'].mean())
+    print("\n3. GRAPH FEATURE ANALYSIS - IDENTIFYING PERFECT SEPARATORS")
+    print("-" * 80)
 
-# 3. Identifying features
-print("\n--- Identifying Features ---")
-merged = cd[['customer_id', 'dev_shared_count']].merge(ca[['customer_id', 'addr_shared_count']], on='customer_id')
-merged = merged.merge(cp[['customer_id', 'pay_shared_count']], on='customer_id')
-merged = merged.merge(cust_orders[['customer_id', 'order_count', 'is_abuse']], on='customer_id')
-merged = merged.merge(cust_reds[['customer_id', 'redemption_count']], on='customer_id')
+    # Check for perfect separation
+    print("\nCluster size distribution:")
+    print(f"  Legitimate: min={legit['cluster_size'].min()}, max={legit['cluster_size'].max()}, median={legit['cluster_size'].median()}")
+    print(f"  Abuse: min={abuse['cluster_size'].min()}, max={abuse['cluster_size'].max()}, median={abuse['cluster_size'].median()}")
 
-for col in ['dev_shared_count', 'addr_shared_count', 'pay_shared_count', 'order_count', 'redemption_count']:
-    legit_max = merged[~merged['is_abuse']][col].max()
-    abuse_min = merged[merged['is_abuse']][col].min()
-    print(f"{col}: Legit max = {legit_max}, Abuse min = {abuse_min}")
+    # Check overlap
+    legit_cluster_sizes = set(legit['cluster_size'].unique())
+    abuse_cluster_sizes = set(abuse['cluster_size'].unique())
+    overlap = legit_cluster_sizes & abuse_cluster_sizes
+    print(f"  Overlap in cluster sizes: {len(overlap)} values")
+    print(f"  Abuse-only cluster sizes: {sorted(abuse_cluster_sizes - legit_cluster_sizes)}")
 
-# 4. Duplicates / Inconsistencies
-print("\n--- Duplicates/Inconsistencies ---")
-print("Duplicate customer_devices:", cd.duplicated(subset=['customer_id', 'device_id']).sum())
-print("Duplicate customer_addresses:", ca.duplicated(subset=['customer_id', 'address_id']).sum())
-print("Duplicate customer_payments:", cp.duplicated(subset=['customer_id', 'payment_id']).sum())
-print("Duplicate offer redemptions per order:", offer_redemptions.duplicated(subset=['order_id']).sum())
+    print("\nUnique connected customers distribution:")
+    print(f"  Legitimate: min={legit['unique_connected_customers'].min()}, max={legit['unique_connected_customers'].max()}, median={legit['unique_connected_customers'].median()}")
+    print(f"  Abuse: min={abuse['unique_connected_customers'].min()}, max={abuse['unique_connected_customers'].max()}, median={abuse['unique_connected_customers'].median()}")
 
-# 5. Group Variances
-print("\n--- Abuse Group Variances ---")
-group_stats = merged[merged['is_abuse']].merge(customers[['customer_id', 'abuse_group_id']], on='customer_id')
-g_summary = group_stats.groupby('abuse_group_id').agg({
-    'dev_shared_count': ['mean', 'std'],
-    'addr_shared_count': 'mean',
-    'pay_shared_count': 'mean',
-    'order_count': 'mean',
-    'redemption_count': 'mean',
-    'customer_id': 'count'
-})
-print(g_summary)
+    # Perfect threshold check
+    threshold_checks = [
+        ('cluster_size > 15', (abuse['cluster_size'] > 15).sum(), (legit['cluster_size'] > 15).sum()),
+        ('unique_connected_customers > 8', (abuse['unique_connected_customers'] > 8).sum(), (legit['unique_connected_customers'] > 8).sum()),
+        ('time_to_first_order < 50h', (abuse['time_to_first_order_hours'] < 50).sum(), (legit['time_to_first_order_hours'] < 50).sum()),
+    ]
 
-print("\n--- IP Addresses ---")
-print("IP address files exist?", os.path.exists('data/ips.csv') or os.path.exists('data/customer_ips.csv'))
-print("Are IPs in customer table?", 'ip_address' in customers.columns)
-print("Are IPs in device table?", 'ip_address' in customer_devices.columns if 'ip_address' in customer_devices else False)
+    print("\n4. THRESHOLD ANALYSIS (Looking for perfect separators)")
+    print("-" * 80)
+    for condition, abuse_count, legit_count in threshold_checks:
+        print(f"{condition}")
+        print(f"  Captures {abuse_count}/{len(abuse)} abuse ({abuse_count/len(abuse)*100:.1f}%)")
+        print(f"  Captures {legit_count}/{len(legit)} legit ({legit_count/len(legit)*100:.1f}%)")
+        if abuse_count > 0:
+            precision = abuse_count / (abuse_count + legit_count)
+            recall = abuse_count / len(abuse)
+            print(f"  Precision: {precision:.3f}, Recall: {recall:.3f}")
+        print()
 
+    print("\n5. BEHAVIORAL TIMING ANALYSIS")
+    print("-" * 80)
+
+    # Time to first order distribution
+    legit_fast_orders = (legit['time_to_first_order_hours'] < 24).sum()
+    abuse_fast_orders = (abuse['time_to_first_order_hours'] < 24).sum()
+
+    print(f"Orders within 24h of account creation:")
+    print(f"  Legitimate: {legit_fast_orders}/{len(legit)} ({legit_fast_orders/len(legit)*100:.1f}%)")
+    print(f"  Abuse: {abuse_fast_orders}/{len(abuse)} ({abuse_fast_orders/len(abuse)*100:.1f}%)")
+
+    print("\n6. INFRASTRUCTURE SHARING PATTERNS")
+    print("-" * 80)
+
+    # Check max IP user counts
+    legit_high_ip = (legit['max_ip_user_count'] >= 10).sum()
+    abuse_high_ip = (abuse['max_ip_user_count'] >= 10).sum()
+
+    print(f"Customers sharing IP with 10+ users:")
+    print(f"  Legitimate: {legit_high_ip}/{len(legit)} ({legit_high_ip/len(legit)*100:.1f}%)")
+    print(f"  Abuse: {abuse_high_ip}/{len(abuse)} ({abuse_high_ip/len(abuse)*100:.1f}%)")
+
+    print("\n7. EVASIVE ABUSE GROUP ANALYSIS")
+    print("-" * 80)
+
+    # Look for evasive groups
+    evasive_groups = gt[gt['abuse_group_id'].str.contains('evasive', na=False)]['abuse_group_id'].unique()
+    if len(evasive_groups) > 0:
+        print(f"Evasive groups found: {len(evasive_groups)}")
+        for eg in evasive_groups:
+            evasive_members = abuse[abuse['abuse_group_id'] == eg]
+            print(f"\n  {eg} ({len(evasive_members)} members):")
+            print(f"    cluster_size: mean={evasive_members['cluster_size'].mean():.1f}")
+            print(f"    unique_connected_customers: mean={evasive_members['unique_connected_customers'].mean():.1f}")
+            print(f"    max_ip_user_count: mean={evasive_members['max_ip_user_count'].mean():.1f}")
+    else:
+        print("No evasive groups found in dataset")
+
+    print("\n" + "="*80)
+    print("ANALYSIS COMPLETE")
+    print("="*80)
+
+if __name__ == '__main__':
+    analyze_codebase()

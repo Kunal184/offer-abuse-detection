@@ -212,8 +212,8 @@ def inject_abuse_groups(customers, customer_devices, customer_addresses, custome
     pool = customers["customer_id"].tolist()
     random.shuffle(pool)
     
-    # Archetypes include evasive (decoupled) abuse groups
-    archetypes = ["fast", "slow_drip", "volume", "ghost", "evasive_proxy", "evasive_stealth"]
+    # Archetypes include evasive (decoupled) abuse groups and patient (slow-to-order but entity-sharing)
+    archetypes = ["fast", "slow_drip", "volume", "ghost", "evasive_proxy", "evasive_stealth", "patient"]
     
     for i in range(num_groups):
         group_type = random.choice(archetypes)
@@ -266,6 +266,8 @@ def inject_abuse_groups(customers, customer_devices, customer_addresses, custome
                 u_time = base_time + timedelta(days=random.randint(1, 10), hours=random.randint(0, 23))
             elif group_type == "evasive_proxy":
                 u_time = base_time + timedelta(hours=random.randint(1, 12))
+            elif group_type == "patient":
+                u_time = base_time + timedelta(hours=random.randint(1, 24))
             else: # volume
                 u_time = base_time + timedelta(days=random.randint(0, 2))
                 
@@ -276,9 +278,39 @@ def inject_abuse_groups(customers, customer_devices, customer_addresses, custome
             offer_redemptions.drop(offer_redemptions[offer_redemptions["customer_id"] == u].index, inplace=True)
             
             num_orders = random.randint(1, 4) if group_type != "volume" else random.randint(4, 7)
-            
+
+            # Archetype-specific first-order timing with multiplicative jitter
+            if group_type == "fast":
+                base_first_order_delay = random.randint(1, 12)
+            elif group_type == "slow_drip":
+                base_first_order_delay = random.randint(6, 48)
+            elif group_type == "volume":
+                base_first_order_delay = random.randint(1, 8)
+            elif group_type == "ghost":
+                base_first_order_delay = random.randint(1, 12)
+            elif group_type == "evasive_proxy":
+                base_first_order_delay = random.randint(2, 18)
+            elif group_type == "evasive_stealth":
+                base_first_order_delay = random.randint(12, 72)
+            elif group_type == "patient":
+                base_first_order_delay = random.randint(36, 168)  # 1.5-7 days
+            else:
+                base_first_order_delay = random.randint(1, 24)
+
+            # Apply multiplicative jitter (0.5x - 1.5x)
+            jitter = random.uniform(0.5, 1.5)
+            first_order_delay = int(base_first_order_delay * jitter)
+
             for o_idx in range(num_orders):
-                order_time = u_time + timedelta(hours=random.randint(1, 24) * (o_idx + 1))
+                if o_idx == 0:
+                    order_time = u_time + timedelta(hours=first_order_delay)
+                else:
+                    # Subsequent orders: base interval with multiplicative jitter
+                    base_interval = random.randint(1, 48)
+                    interval_jitter = random.uniform(0.5, 1.5)
+                    interval = int(base_interval * interval_jitter)
+                    order_time = u_time + timedelta(hours=first_order_delay + interval * o_idx)
+
                 is_failed = random.random() < 0.08
                 
                 order_id = str(uuid.uuid4())
