@@ -151,32 +151,52 @@ def split_stratified(df, test_size=0.15, val_size=0.15, random_state=42):
     }
 
 
-def split_group_aware(df, test_group_ratio=0.20, val_group_ratio=0.13, random_state=42):
+def split_group_aware(df, test_group_ratio=0.20, val_group_ratio=0.13, random_state=42, fixed_test_groups=None):
     """
     Hold out entire abuse groups into train, validation, and test sets.
     Legitimate customers (who have no abuse_group_id) are assigned independent
     1-customer group IDs ('legit_<customer_id>'), ensuring zero loss of legitimate samples
     while maintaining proportional representation across partitions.
+
+    Args:
+        fixed_test_groups: Optional list of explicit test group IDs. If provided, these
+                          groups are held out for test regardless of test_group_ratio.
+                          Val groups are still randomly sampled from remaining groups.
+                          This ensures reproducible test sets across generator iterations.
     """
     feature_cols = get_feature_cols(df)
-    
+
     # 1. Abuse groups breakdown
     abuse_df = df[df["is_abuse"] == 1]
     group_sizes = abuse_df.groupby("abuse_group_id")["customer_id"].count().to_dict()
     unique_abuse_groups = list(group_sizes.keys())
 
-    # Deterministic shuffle of abuse groups
-    rng = np.random.RandomState(random_state)
-    shuffled_abuse_groups = list(unique_abuse_groups)
-    rng.shuffle(shuffled_abuse_groups)
+    if fixed_test_groups is not None:
+        # Explicit test set for reproducible evaluation
+        test_groups = [g for g in fixed_test_groups if g in unique_abuse_groups]
+        remaining_groups = [g for g in unique_abuse_groups if g not in test_groups]
 
-    n_groups = len(shuffled_abuse_groups)
-    n_test_g = int(np.round(n_groups * test_group_ratio))
-    n_val_g = int(np.round(n_groups * val_group_ratio))
+        # Random val split from remaining groups
+        rng = np.random.RandomState(random_state)
+        shuffled_remaining = list(remaining_groups)
+        rng.shuffle(shuffled_remaining)
 
-    test_groups = shuffled_abuse_groups[:n_test_g]
-    val_groups = shuffled_abuse_groups[n_test_g:n_test_g + n_val_g]
-    train_groups = shuffled_abuse_groups[n_test_g + n_val_g:]
+        n_val_g = int(np.round(len(remaining_groups) * val_group_ratio / (1 - test_group_ratio)))
+        val_groups = shuffled_remaining[:n_val_g]
+        train_groups = shuffled_remaining[n_val_g:]
+    else:
+        # Original random shuffle behavior (backward compatible)
+        rng = np.random.RandomState(random_state)
+        shuffled_abuse_groups = list(unique_abuse_groups)
+        rng.shuffle(shuffled_abuse_groups)
+
+        n_groups = len(shuffled_abuse_groups)
+        n_test_g = int(np.round(n_groups * test_group_ratio))
+        n_val_g = int(np.round(n_groups * val_group_ratio))
+
+        test_groups = shuffled_abuse_groups[:n_test_g]
+        val_groups = shuffled_abuse_groups[n_test_g:n_test_g + n_val_g]
+        train_groups = shuffled_abuse_groups[n_test_g + n_val_g:]
 
     train_abusers = df[df["abuse_group_id"].isin(train_groups)]
     val_abusers = df[df["abuse_group_id"].isin(val_groups)]
@@ -362,9 +382,19 @@ def main():
     # 1. Leakage Analysis
     leakage_report = analyse_group_leakage(df)
 
-    # 2. Prepare Splits
+    # 2. Define fixed test set for reproducible evaluation across generator iterations
+    # Selected to cover difficulty dimensions: timing (patient), graph (volume),
+    # behavioral (evasive_stealth), and temporal spread (slow_drip)
+    FIXED_TEST_GROUPS = [
+        "abuse_group_1_evasive_stealth",  # 3 samples - HARD (no entity sharing)
+        "abuse_group_8_patient",           # 4 samples - HARD (slow timing, overlaps legit)
+        "abuse_group_13_slow_drip",        # 6 samples - MEDIUM (temporal spread)
+        "abuse_group_7_volume",            # 7 samples - MEDIUM (high connectivity)
+    ]
+
+    # 3. Prepare Splits
     stratified_data = split_stratified(df)
-    group_data = split_group_aware(df)
+    group_data = split_group_aware(df, fixed_test_groups=FIXED_TEST_GROUPS)
 
     # Report Abuse Groups in Group-Aware Split
     print("\n------------------------------------------------------------")
