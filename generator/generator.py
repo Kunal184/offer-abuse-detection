@@ -207,7 +207,7 @@ def generate_offer_redemptions(orders_df, offers_df):
             
     return pd.DataFrame(redemptions)
 
-def inject_abuse_groups(customers, customer_devices, customer_addresses, customer_payments, customer_ips, orders, offer_redemptions, offers, num_groups=18):
+def inject_abuse_groups(customers, customer_devices, customer_addresses, customer_payments, customer_ips, orders, offer_redemptions, offers, num_groups=21):
     ground_truth = pd.DataFrame({"customer_id": customers["customer_id"], "abuse_group_id": None})
     pool = customers["customer_id"].tolist()
     random.shuffle(pool)
@@ -215,8 +215,21 @@ def inject_abuse_groups(customers, customer_devices, customer_addresses, custome
     # Archetypes include evasive (decoupled) abuse groups and patient (slow-to-order but entity-sharing)
     archetypes = ["fast", "slow_drip", "volume", "ghost", "evasive_proxy", "evasive_stealth", "patient"]
     
-    for i in range(num_groups):
-        group_type = random.choice(archetypes)
+    # Allocate a minimum of three groups to every archetype before assigning
+    # any additional groups.  Shuffling preserves randomized group ordering
+    # without allowing an archetype to be absent or singleton.
+    minimum_groups_per_archetype = 3
+    minimum_group_count = len(archetypes) * minimum_groups_per_archetype
+    if num_groups < minimum_group_count:
+        raise ValueError(
+            f"num_groups must be at least {minimum_group_count} to allocate "
+            f"{minimum_groups_per_archetype} groups per archetype"
+        )
+    group_types = archetypes * minimum_groups_per_archetype
+    group_types.extend(random.choices(archetypes, k=num_groups - minimum_group_count))
+    random.shuffle(group_types)
+
+    for i, group_type in enumerate(group_types):
         group_size = random.randint(3, 7)
         group_id = f"abuse_group_{i+1}_{group_type}"
         
@@ -361,7 +374,7 @@ def main(seed=None):
     offers = generate_offers()
     offer_redemptions = generate_offer_redemptions(orders, offers)
     
-    num_abuse_groups = 16
+    num_abuse_groups = 21
     (ground_truth, customers, customer_devices, customer_addresses, 
      customer_payments, customer_ips, orders, offer_redemptions) = inject_abuse_groups(
         customers, customer_devices, customer_addresses, customer_payments, 

@@ -115,6 +115,7 @@ def analyse_group_leakage(df):
 # 3. Splitting Strategies
 # ---------------------------------------------
 FEATURE_COLS = None  # set dynamically
+ARCHETYPES = ["fast", "slow_drip", "volume", "ghost", "evasive_proxy", "evasive_stealth", "patient"]
 
 
 def get_feature_cols(df):
@@ -125,6 +126,23 @@ def get_feature_cols(df):
             if c not in ("customer_id", "is_abuse", "abuse_group_id")
         ]
     return FEATURE_COLS
+
+
+def select_stratified_test_groups(abuse_group_ids):
+    """Select the lowest-numbered group from each archetype for testing."""
+    groups_by_archetype = {archetype: [] for archetype in ARCHETYPES}
+    for group_id in abuse_group_ids:
+        _, _, group_index, archetype = group_id.split("_", 3)
+        groups_by_archetype[archetype].append((int(group_index), group_id))
+
+    missing_archetypes = [a for a, groups in groups_by_archetype.items() if not groups]
+    if missing_archetypes:
+        raise ValueError(
+            "Cannot build archetype-stratified test set; missing archetypes: "
+            f"{missing_archetypes}"
+        )
+
+    return [min(groups_by_archetype[archetype])[1] for archetype in ARCHETYPES]
 
 
 def split_stratified(df, test_size=0.15, val_size=0.15, random_state=42):
@@ -358,6 +376,14 @@ def run_pipeline_for_split(split_name, split_data, output_dir):
             plot_feature_importance(name, importances, output_dir)
             model_path = os.path.join(output_dir, f"model_{name}.joblib")
             joblib.dump(model, model_path)
+        elif split_name == "group_aware":
+            groupaware_model_names = {
+                "LogisticRegression": "model_logistic_regression_groupaware.joblib",
+                "RandomForest": "model_random_forest_groupaware.joblib",
+                "XGBoost": "model_xgboost_groupaware.joblib",
+            }
+            model_path = os.path.join(output_dir, groupaware_model_names[name])
+            joblib.dump(model, model_path)
 
         split_results[name] = {
             "val": val_metrics,
@@ -367,6 +393,8 @@ def run_pipeline_for_split(split_name, split_data, output_dir):
 
     if split_name == "stratified":
         joblib.dump(scaler, os.path.join(output_dir, "scaler.joblib"))
+    elif split_name == "group_aware":
+        joblib.dump(scaler, os.path.join(output_dir, "scaler_groupaware.joblib"))
 
     return split_results
 
@@ -382,15 +410,12 @@ def main():
     # 1. Leakage Analysis
     leakage_report = analyse_group_leakage(df)
 
-    # 2. Define fixed test set for reproducible evaluation across generator iterations
-    # Selected to cover difficulty dimensions: timing (patient), graph (volume),
-    # behavioral (evasive_stealth), and temporal spread (slow_drip)
-    FIXED_TEST_GROUPS = [
-        "abuse_group_1_evasive_stealth",  # 3 samples - HARD (no entity sharing)
-        "abuse_group_8_patient",           # 4 samples - HARD (slow timing, overlaps legit)
-        "abuse_group_13_slow_drip",        # 6 samples - MEDIUM (temporal spread)
-        "abuse_group_7_volume",            # 7 samples - MEDIUM (high connectivity)
-    ]
+    # 2. Build a reproducible archetype-stratified test set.  Exactly one
+    # lowest-numbered group from every archetype is held out for test.
+    FIXED_TEST_GROUPS = select_stratified_test_groups(
+        df.loc[df["is_abuse"] == 1, "abuse_group_id"].dropna().unique()
+    )
+    print(f"Archetype-stratified test groups (lowest group index): {FIXED_TEST_GROUPS}")
 
     # 3. Prepare Splits
     stratified_data = split_stratified(df)

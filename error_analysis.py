@@ -1,35 +1,31 @@
 """
-Post-training error analysis - analyze false positives and false negatives
-without retraining models.
+Post-training error analysis for the frozen group-aware test set.
+Models are loaded from the group-aware persisted artifacts; this script does
+not train or refit any model or transformer.
 """
 import os
 import pandas as pd
-import numpy as np
 import joblib
-from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import f1_score, precision_score, recall_score
+from ml.train import select_stratified_test_groups
 
 # Load data
 features = pd.read_csv('data/customer_features.csv')
 gt = pd.read_csv('data/ground_truth.csv')
-gt['is_abuse'] = gt['is_abuse'] = gt['abuse_group_id'].notna().astype(int)
+gt['is_abuse'] = gt['abuse_group_id'].notna().astype(int)
 merged = features.merge(gt[['customer_id', 'is_abuse', 'abuse_group_id']], on='customer_id')
 
-# Recreate group-aware split (same logic as train.py)
+# Recreate only the frozen group-aware *test data* selection used by train.py.
+# Legitimate test rows use the same deterministic shuffle and 15% allocation.
 feature_cols = [c for c in features.columns if c not in ('customer_id', 'is_abuse', 'abuse_group_id')]
-
-abuse_df = merged[merged['is_abuse'] == 1]
-group_sizes = abuse_df.groupby('abuse_group_id')['customer_id'].count().to_dict()
-unique_abuse_groups = list(group_sizes.keys())
-
-rng = np.random.RandomState(42)
-shuffled_abuse_groups = list(unique_abuse_groups)
-rng.shuffle(shuffled_abuse_groups)
-
-n_groups = len(shuffled_abuse_groups)
-n_test_g = int(np.round(n_groups * 0.20))
-n_val_g = int(np.round(n_groups * 0.13))
-
-test_groups = set(shuffled_abuse_groups[:n_test_g])
+FROZEN_TEST_GROUPS = select_stratified_test_groups(
+    merged.loc[merged['is_abuse'] == 1, 'abuse_group_id'].dropna().unique()
+)
+test_groups = set(FROZEN_TEST_GROUPS)
+available_groups = set(merged.loc[merged['is_abuse'] == 1, 'abuse_group_id'].dropna())
+missing_groups = test_groups - available_groups
+if missing_groups:
+    raise ValueError(f'Frozen test groups missing from current data: {sorted(missing_groups)}')
 test_abusers = merged[merged['abuse_group_id'].isin(test_groups)]
 
 legit_df = merged[merged['is_abuse'] == 0].sample(frac=1.0, random_state=42)
@@ -41,11 +37,11 @@ test_df = pd.concat([test_abusers, test_legit]).sample(frac=1.0, random_state=42
 X_test = test_df[feature_cols].values
 y_test = test_df['is_abuse'].values
 
-# Load trained models
-scaler = joblib.load('ml/outputs/scaler.joblib')
-lr_model = joblib.load('ml/outputs/model_LogisticRegression.joblib')
-rf_model = joblib.load('ml/outputs/model_RandomForest.joblib')
-xgb_model = joblib.load('ml/outputs/model_XGBoost.joblib')
+# Load persisted group-aware models and their corresponding scaler.
+scaler = joblib.load('ml/outputs/scaler_groupaware.joblib')
+lr_model = joblib.load('ml/outputs/model_logistic_regression_groupaware.joblib')
+rf_model = joblib.load('ml/outputs/model_random_forest_groupaware.joblib')
+xgb_model = joblib.load('ml/outputs/model_xgboost_groupaware.joblib')
 
 X_test_sc = scaler.transform(X_test)
 
@@ -59,6 +55,7 @@ models = {
 print('='*80)
 print('DETAILED ERROR ANALYSIS - GROUP-AWARE TEST SET')
 print('='*80)
+print(f'Frozen test groups: {FROZEN_TEST_GROUPS}')
 
 for model_name, (model, X) in models.items():
     print(f'\n{"="*80}')
@@ -67,6 +64,11 @@ for model_name, (model, X) in models.items():
 
     y_pred = model.predict(X)
     y_prob = model.predict_proba(X)[:, 1]
+    print(
+        f"Metrics: F1={f1_score(y_test, y_pred):.3f} | "
+        f"Precision={precision_score(y_test, y_pred, zero_division=0):.3f} | "
+        f"Recall={recall_score(y_test, y_pred, zero_division=0):.3f}"
+    )
 
     test_df_copy = test_df.copy()
     test_df_copy['y_true'] = y_test
@@ -105,6 +107,14 @@ for model_name, (model, X) in models.items():
             print(f'    order_count: {row["order_count"]:.0f}')
             print(f'    max_ip_user_count: {row["max_ip_user_count"]:.0f}')
             print(f'    unique_connected_customers: {row["unique_connected_customers"]:.0f}')
+
+    print('\nPER-ARCHETYPE RECALL:')
+    for group_id in FROZEN_TEST_GROUPS:
+        archetype = group_id.split('_', 3)[3]
+        group_rows = test_df_copy[test_df_copy['abuse_group_id'] == group_id]
+        caught = int(group_rows['y_pred'].sum())
+        total = len(group_rows)
+        print(f'  {archetype:<16} ({group_id}): {caught}/{total} ({caught / total:.3f})')
 
 print('\n' + '='*80)
 print('CROSS-MODEL ERROR COMPARISON')

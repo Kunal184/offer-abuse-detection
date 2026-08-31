@@ -1,7 +1,61 @@
-# Reproducible Baseline - Explicit Test Set Evaluation
+# Current Reproducible Baseline — Archetype-Quota Evaluation
+
+**Date**: 2026-08-31  
+**Status**: Current baseline established; the historical 16-group baseline below is superseded, retained for comparison only.
+
+---
+
+## EVALUATION METHODOLOGY
+
+### Dataset and Archetype Quota
+
+The seed-42 dataset contains 21 abuse groups: exactly three groups for each
+of `fast`, `slow_drip`, `volume`, `ghost`, `evasive_proxy`,
+`evasive_stealth`, and `patient`.
+
+### Explicit Archetype-Stratified Test Set
+
+The test selection rule is deterministic: select the **lowest numerical group
+index for each archetype**. This produces one held-out group per archetype:
+
+| Archetype | Test group | Abuse samples |
+|---|---|---:|
+| fast | `abuse_group_3_fast` | 7 |
+| slow_drip | `abuse_group_10_slow_drip` | 5 |
+| volume | `abuse_group_7_volume` | 7 |
+| ghost | `abuse_group_4_ghost` | 3 |
+| evasive_proxy | `abuse_group_1_evasive_proxy` | 5 |
+| evasive_stealth | `abuse_group_16_evasive_stealth` | 6 |
+| patient | `abuse_group_6_patient` | 7 |
+
+Total: 40 abuse samples and 133 legitimate samples. The selection rule is
+implemented by `select_stratified_test_groups()` in `ml/train.py` and reused
+by `error_analysis.py`.
+
+### Group-Aware Test Performance
+
+| Model | F1 | Precision | Recall | Confusion matrix (TN, FP, FN, TP) |
+|---|---:|---:|---:|---|
+| Logistic Regression | 0.964 | 0.930 | 1.000 | (130, 3, 0, 40) |
+| Random Forest | 0.873 | 1.000 | 0.775 | (133, 0, 9, 31) |
+| XGBoost | 0.935 | 0.973 | 0.900 | (132, 1, 4, 36) |
+
+### Persisted Group-Aware Artifacts
+
+- `ml/outputs/model_logistic_regression_groupaware.joblib`
+- `ml/outputs/model_random_forest_groupaware.joblib`
+- `ml/outputs/model_xgboost_groupaware.joblib`
+- `ml/outputs/scaler_groupaware.joblib`
+
+---
+
+# Historical Reproducible Baseline — Explicit Test Set Evaluation (Superseded)
+
+The following 16-group baseline is retained unchanged as historical evidence.
+It is not comparable to the current 21-group, archetype-quota evaluation.
 
 **Date**: 2026-08-29  
-**Status**: Baseline established with fixed test set
+**Status**: Superseded by the 2026-08-31 archetype-quota baseline above.
 
 ---
 
