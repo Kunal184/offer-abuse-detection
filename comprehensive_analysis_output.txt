@@ -1,0 +1,514 @@
+====================================================================================================
+  COMPREHENSIVE ANALYSIS: OFFER-ABUSE DETECTION ML MODELS
+  Group-Aware Evaluation with Fixed Test Set
+====================================================================================================
+
+[1/13] Loading features and ground truth...
+  Loaded 1000 customers, 16 features
+
+[2/13] Building group-aware train/val/test splits with FIXED_TEST_GROUPS...
+  Train: 693 (abuse=48)
+  Val:   149 (abuse=11)
+  Test:  158 (abuse=20)
+  Test groups: ['abuse_group_1_evasive_stealth', 'abuse_group_8_patient', 'abuse_group_13_slow_drip', 'abuse_group_7_volume']
+
+[3/13] Loading trained models from ml/outputs/...
+  Loaded: LogisticRegression, RandomForest, XGBoost, scaler
+
+[4/13] Getting predictions for test set...
+  Predictions ready for all models
+
+[5/13] Overall metrics comparison...
+
+====================================================================================================
+  OVERALL METRICS COMPARISON
+====================================================================================================
+  Model                  | Split |    Acc |   Prec |    Rec |     F1 |    ROC |     PR |  Brier
+----------------------------------------------------------------------------------------------------
+  LogisticRegression     | val   |  0.973 |  0.733 |  1.000 |  0.846 |  0.995 |  0.927 |  0.022
+  LogisticRegression     | test  |  0.994 |  0.952 |  1.000 |  0.976 |  1.000 |  1.000 |  0.006
+    CM -> TN= 137  FP=   1  FN=   0  TP=  20
+----------------------------------------------------------------------------------------------------
+  RandomForest           | val   |  1.000 |  1.000 |  1.000 |  1.000 |  1.000 |  1.000 |  0.004
+  RandomForest           | test  |  1.000 |  1.000 |  1.000 |  1.000 |  1.000 |  1.000 |  0.002
+    CM -> TN= 138  FP=   0  FN=   0  TP=  20
+----------------------------------------------------------------------------------------------------
+  XGBoost                | val   |  1.000 |  1.000 |  1.000 |  1.000 |  1.000 |  1.000 |  0.000
+  XGBoost                | test  |  1.000 |  1.000 |  1.000 |  1.000 |  1.000 |  1.000 |  0.000
+    CM -> TN= 138  FP=   0  FN=   0  TP=  20
+----------------------------------------------------------------------------------------------------
+
+[6/13] Per-archetype error analysis...
+
+====================================================================================================
+  PER-ARCHETYPE ERROR ANALYSIS
+====================================================================================================
+
+  --- LogisticRegression ---
+    [PASS] abuse_group_1_evasive_stealth       | n= 3 | TP= 3/ 3 | MISSED= 0 | avg_prob=0.988 | difficulty=HARD  
+    [PASS] abuse_group_8_patient               | n= 4 | TP= 4/ 4 | MISSED= 0 | avg_prob=0.997 | difficulty=HARD  
+    [PASS] abuse_group_13_slow_drip            | n= 6 | TP= 6/ 6 | MISSED= 0 | avg_prob=0.995 | difficulty=MEDIUM
+    [PASS] abuse_group_7_volume                | n= 7 | TP= 7/ 7 | MISSED= 0 | avg_prob=1.000 | difficulty=MEDIUM
+    [FP-LEGIT] Legitimate customers flagged as abuse: 1
+           -> FP: customer=493f2b4b-26ba-41cc-871b-3f44d33ec2d1, prob=0.515, cluster_size=33, order_count=6, avg_spend=883.41
+
+  --- RandomForest ---
+    [PASS] abuse_group_1_evasive_stealth       | n= 3 | TP= 3/ 3 | MISSED= 0 | avg_prob=1.000 | difficulty=HARD  
+    [PASS] abuse_group_8_patient               | n= 4 | TP= 4/ 4 | MISSED= 0 | avg_prob=1.000 | difficulty=HARD  
+    [PASS] abuse_group_13_slow_drip            | n= 6 | TP= 6/ 6 | MISSED= 0 | avg_prob=0.994 | difficulty=MEDIUM
+    [PASS] abuse_group_7_volume                | n= 7 | TP= 7/ 7 | MISSED= 0 | avg_prob=0.959 | difficulty=MEDIUM
+    [FP-LEGIT] No legitimate customers incorrectly flagged
+
+  --- XGBoost ---
+    [PASS] abuse_group_1_evasive_stealth       | n= 3 | TP= 3/ 3 | MISSED= 0 | avg_prob=0.999 | difficulty=HARD  
+    [PASS] abuse_group_8_patient               | n= 4 | TP= 4/ 4 | MISSED= 0 | avg_prob=0.998 | difficulty=HARD  
+    [PASS] abuse_group_13_slow_drip            | n= 6 | TP= 6/ 6 | MISSED= 0 | avg_prob=0.999 | difficulty=MEDIUM
+    [PASS] abuse_group_7_volume                | n= 7 | TP= 7/ 7 | MISSED= 0 | avg_prob=0.999 | difficulty=MEDIUM
+    [FP-LEGIT] No legitimate customers incorrectly flagged
+
+[7/13] Feature distribution comparison (correct vs incorrect)...
+
+====================================================================================================
+  FEATURE DISTRIBUTION: CORRECT vs INCORRECT PREDICTIONS (TEST SET)
+====================================================================================================
+
+  Test set: 20 abuse, 138 legitimate
+
+
+  --- LogisticRegression ---
+  TP=20, FN=0, TN=137, FP=1
+  Feature                             |   TP_Med |   FN_Med | TP/FN_ratio |   TN_Med |   FP_Med | TN/FP_ratio
+  ----------------------------------------------------------------------------------------------------
+  account_age_days                    |   432.83 |     NaN |        nan |   367.79 |   331.70 |       1.11
+  order_count                         |     3.00 |     NaN |        nan |     5.00 |     6.00 |       0.83
+  total_spend                         |  2921.38 |     NaN |        nan | 16199.42 |  5300.44 |       3.06
+  average_spend                       |   917.02 |     NaN |        nan |  3784.31 |   883.41 |       4.28
+  time_to_first_order_hours           |    20.50 |     NaN |        nan |   561.00 |     5.00 |     112.20
+  redemption_count                    |     2.00 |     NaN |        nan |     2.00 |     4.00 |       0.50
+  time_to_first_redemption_hours      |    21.50 |     NaN |        nan |   602.00 |     5.00 |     120.40
+  order_redemption_rate               |     1.00 |     NaN |        nan |     0.33 |     0.67 |       0.50
+  max_device_user_count               |     5.00 |     NaN |        nan |     1.00 |     1.00 |       1.00
+  max_address_user_count              |     1.00 |     NaN |        nan |     1.00 |     1.00 |       1.00
+  max_payment_user_count              |     1.00 |     NaN |        nan |     1.00 |     1.00 |       1.00
+  max_ip_user_count                   |     1.00 |     NaN |        nan |     1.00 |    26.00 |       0.04
+  unique_connected_customers          |     5.50 |     NaN |        nan |     0.00 |    25.00 |       0.00
+  avg_entity_degree                   |     2.50 |     NaN |        nan |     1.00 |     7.25 |       0.14
+  max_entity_degree                   |     6.00 |     NaN |        nan |     1.00 |    26.00 |       0.04
+  cluster_size                        |    32.50 |     NaN |        nan |     1.00 |    33.00 |       0.03
+
+  Kolmogorov-Smirnov test (TP vs FN distributions, abuse only):
+
+  --- RandomForest ---
+  TP=20, FN=0, TN=138, FP=0
+  Feature                             |   TP_Med |   FN_Med | TP/FN_ratio |   TN_Med |   FP_Med | TN/FP_ratio
+  ----------------------------------------------------------------------------------------------------
+  account_age_days                    |   432.83 |     NaN |        nan |   365.61 |     NaN |        nan
+  order_count                         |     3.00 |     NaN |        nan |     5.00 |     NaN |        nan
+  total_spend                         |  2921.38 |     NaN |        nan | 15973.81 |     NaN |        nan
+  average_spend                       |   917.02 |     NaN |        nan |  3780.07 |     NaN |        nan
+  time_to_first_order_hours           |    20.50 |     NaN |        nan |   550.50 |     NaN |        nan
+  redemption_count                    |     2.00 |     NaN |        nan |     2.00 |     NaN |        nan
+  time_to_first_redemption_hours      |    21.50 |     NaN |        nan |   581.50 |     NaN |        nan
+  order_redemption_rate               |     1.00 |     NaN |        nan |     0.33 |     NaN |        nan
+  max_device_user_count               |     5.00 |     NaN |        nan |     1.00 |     NaN |        nan
+  max_address_user_count              |     1.00 |     NaN |        nan |     1.00 |     NaN |        nan
+  max_payment_user_count              |     1.00 |     NaN |        nan |     1.00 |     NaN |        nan
+  max_ip_user_count                   |     1.00 |     NaN |        nan |     1.00 |     NaN |        nan
+  unique_connected_customers          |     5.50 |     NaN |        nan |     0.00 |     NaN |        nan
+  avg_entity_degree                   |     2.50 |     NaN |        nan |     1.00 |     NaN |        nan
+  max_entity_degree                   |     6.00 |     NaN |        nan |     1.00 |     NaN |        nan
+  cluster_size                        |    32.50 |     NaN |        nan |     1.00 |     NaN |        nan
+
+  Kolmogorov-Smirnov test (TP vs FN distributions, abuse only):
+
+  --- XGBoost ---
+  TP=20, FN=0, TN=138, FP=0
+  Feature                             |   TP_Med |   FN_Med | TP/FN_ratio |   TN_Med |   FP_Med | TN/FP_ratio
+  ----------------------------------------------------------------------------------------------------
+  account_age_days                    |   432.83 |     NaN |        nan |   365.61 |     NaN |        nan
+  order_count                         |     3.00 |     NaN |        nan |     5.00 |     NaN |        nan
+  total_spend                         |  2921.38 |     NaN |        nan | 15973.81 |     NaN |        nan
+  average_spend                       |   917.02 |     NaN |        nan |  3780.07 |     NaN |        nan
+  time_to_first_order_hours           |    20.50 |     NaN |        nan |   550.50 |     NaN |        nan
+  redemption_count                    |     2.00 |     NaN |        nan |     2.00 |     NaN |        nan
+  time_to_first_redemption_hours      |    21.50 |     NaN |        nan |   581.50 |     NaN |        nan
+  order_redemption_rate               |     1.00 |     NaN |        nan |     0.33 |     NaN |        nan
+  max_device_user_count               |     5.00 |     NaN |        nan |     1.00 |     NaN |        nan
+  max_address_user_count              |     1.00 |     NaN |        nan |     1.00 |     NaN |        nan
+  max_payment_user_count              |     1.00 |     NaN |        nan |     1.00 |     NaN |        nan
+  max_ip_user_count                   |     1.00 |     NaN |        nan |     1.00 |     NaN |        nan
+  unique_connected_customers          |     5.50 |     NaN |        nan |     0.00 |     NaN |        nan
+  avg_entity_degree                   |     2.50 |     NaN |        nan |     1.00 |     NaN |        nan
+  max_entity_degree                   |     6.00 |     NaN |        nan |     1.00 |     NaN |        nan
+  cluster_size                        |    32.50 |     NaN |        nan |     1.00 |     NaN |        nan
+
+  Kolmogorov-Smirnov test (TP vs FN distributions, abuse only):
+
+[8/13] Archetype difficulty analysis...
+
+====================================================================================================
+  WHY ARE SPECIFIC ARCHETYPES DIFFICULT?
+====================================================================================================
+
+  --- LogisticRegression ---
+
+  abuse_group_1_evasive_stealth (HARD) - No shared entity fingerprints - looks like normal users
+  Members in test: 3 | Missed: 0
+  Feature                        |  Group_Med | TrainAbuse_Med | TrainLegit_Med |   vs_Abuse |   vs_Legit
+  ------------------------------ | ---------- | -------------- | -------------- | ---------- | ----------
+  cluster_size                   |       1.00 |           5.00 |           1.00 |     -80.0% |      +0.0%
+  max_device_user_count          |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  max_address_user_count         |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  max_payment_user_count         |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  max_ip_user_count              |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  order_redemption_rate          |       1.00 |           1.00 |           0.40 |      +0.0% |    +150.0%
+  average_spend                  |    1138.83 |         897.81 |        3932.11 |     +26.8% |     -71.0%
+  total_spend                    |    1433.99 |        2434.03 |       14938.56 |     -41.1% |     -90.4%
+  order_count                    |       1.00 |           2.00 |           4.00 |     -50.0% |     -75.0%
+  time_to_first_order_hours      |      22.00 |           9.50 |         563.00 |    +131.6% |     -96.1%
+  unique_connected_customers     |       0.00 |           3.00 |           0.00 |    -100.0% |      +nan%
+
+  abuse_group_8_patient (HARD) - Slow timing - overlaps with legitimate behavior
+  Members in test: 4 | Missed: 0
+  Feature                        |  Group_Med | TrainAbuse_Med | TrainLegit_Med |   vs_Abuse |   vs_Legit
+  ------------------------------ | ---------- | -------------- | -------------- | ---------- | ----------
+  cluster_size                   |      33.00 |           5.00 |           1.00 |    +560.0% |   +3200.0%
+  max_device_user_count          |       4.00 |           1.00 |           1.00 |    +300.0% |    +300.0%
+  max_address_user_count         |       4.00 |           1.00 |           1.00 |    +300.0% |    +300.0%
+  max_payment_user_count         |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  max_ip_user_count              |      13.50 |           1.00 |           1.00 |   +1250.0% |   +1250.0%
+  order_redemption_rate          |       1.00 |           1.00 |           0.40 |      +0.0% |    +150.0%
+  average_spend                  |     878.38 |         897.81 |        3932.11 |      -2.2% |     -77.7%
+  total_spend                    |    1219.07 |        2434.03 |       14938.56 |     -49.9% |     -91.8%
+  order_count                    |       1.50 |           2.00 |           4.00 |     -25.0% |     -62.5%
+  time_to_first_order_hours      |      74.50 |           9.50 |         563.00 |    +684.2% |     -86.8%
+  unique_connected_customers     |      15.00 |           3.00 |           0.00 |    +400.0% |      +nan%
+
+  abuse_group_13_slow_drip (MEDIUM) - Temporal spread - stretched redemption window
+  Members in test: 6 | Missed: 0
+  Feature                        |  Group_Med | TrainAbuse_Med | TrainLegit_Med |   vs_Abuse |   vs_Legit
+  ------------------------------ | ---------- | -------------- | -------------- | ---------- | ----------
+  cluster_size                   |      57.00 |           5.00 |           1.00 |   +1040.0% |   +5600.0%
+  max_device_user_count          |       5.00 |           1.00 |           1.00 |    +400.0% |    +400.0%
+  max_address_user_count         |       4.00 |           1.00 |           1.00 |    +300.0% |    +300.0%
+  max_payment_user_count         |       4.00 |           1.00 |           1.00 |    +300.0% |    +300.0%
+  max_ip_user_count              |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  order_redemption_rate          |       0.88 |           1.00 |           0.40 |     -12.5% |    +118.7%
+  average_spend                  |     880.01 |         897.81 |        3932.11 |      -2.0% |     -77.6%
+  total_spend                    |    2192.48 |        2434.03 |       14938.56 |      -9.9% |     -85.3%
+  order_count                    |       2.00 |           2.00 |           4.00 |      +0.0% |     -50.0%
+  time_to_first_order_hours      |      22.50 |           9.50 |         563.00 |    +136.8% |     -96.0%
+  unique_connected_customers     |       4.50 |           3.00 |           0.00 |     +50.0% |      +nan%
+
+  abuse_group_7_volume (MEDIUM) - High connectivity - large shared-device/IP rings
+  Members in test: 7 | Missed: 0
+  Feature                        |  Group_Med | TrainAbuse_Med | TrainLegit_Med |   vs_Abuse |   vs_Legit
+  ------------------------------ | ---------- | -------------- | -------------- | ---------- | ----------
+  cluster_size                   |      32.00 |           5.00 |           1.00 |    +540.0% |   +3100.0%
+  max_device_user_count          |       7.00 |           1.00 |           1.00 |    +600.0% |    +600.0%
+  max_address_user_count         |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  max_payment_user_count         |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  max_ip_user_count              |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  order_redemption_rate          |       0.86 |           1.00 |           0.40 |     -14.3% |    +114.3%
+  average_spend                  |     911.06 |         897.81 |        3932.11 |      +1.5% |     -76.8%
+  total_spend                    |    5807.42 |        2434.03 |       14938.56 |    +138.6% |     -61.1%
+  order_count                    |       7.00 |           2.00 |           4.00 |    +250.0% |     +75.0%
+  time_to_first_order_hours      |       6.00 |           9.50 |         563.00 |     -36.8% |     -98.9%
+  unique_connected_customers     |       6.00 |           3.00 |           0.00 |    +100.0% |      +nan%
+
+  --- RandomForest ---
+
+  abuse_group_1_evasive_stealth (HARD) - No shared entity fingerprints - looks like normal users
+  Members in test: 3 | Missed: 0
+  Feature                        |  Group_Med | TrainAbuse_Med | TrainLegit_Med |   vs_Abuse |   vs_Legit
+  ------------------------------ | ---------- | -------------- | -------------- | ---------- | ----------
+  cluster_size                   |       1.00 |           5.00 |           1.00 |     -80.0% |      +0.0%
+  max_device_user_count          |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  max_address_user_count         |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  max_payment_user_count         |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  max_ip_user_count              |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  order_redemption_rate          |       1.00 |           1.00 |           0.40 |      +0.0% |    +150.0%
+  average_spend                  |    1138.83 |         897.81 |        3932.11 |     +26.8% |     -71.0%
+  total_spend                    |    1433.99 |        2434.03 |       14938.56 |     -41.1% |     -90.4%
+  order_count                    |       1.00 |           2.00 |           4.00 |     -50.0% |     -75.0%
+  time_to_first_order_hours      |      22.00 |           9.50 |         563.00 |    +131.6% |     -96.1%
+  unique_connected_customers     |       0.00 |           3.00 |           0.00 |    -100.0% |      +nan%
+
+  abuse_group_8_patient (HARD) - Slow timing - overlaps with legitimate behavior
+  Members in test: 4 | Missed: 0
+  Feature                        |  Group_Med | TrainAbuse_Med | TrainLegit_Med |   vs_Abuse |   vs_Legit
+  ------------------------------ | ---------- | -------------- | -------------- | ---------- | ----------
+  cluster_size                   |      33.00 |           5.00 |           1.00 |    +560.0% |   +3200.0%
+  max_device_user_count          |       4.00 |           1.00 |           1.00 |    +300.0% |    +300.0%
+  max_address_user_count         |       4.00 |           1.00 |           1.00 |    +300.0% |    +300.0%
+  max_payment_user_count         |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  max_ip_user_count              |      13.50 |           1.00 |           1.00 |   +1250.0% |   +1250.0%
+  order_redemption_rate          |       1.00 |           1.00 |           0.40 |      +0.0% |    +150.0%
+  average_spend                  |     878.38 |         897.81 |        3932.11 |      -2.2% |     -77.7%
+  total_spend                    |    1219.07 |        2434.03 |       14938.56 |     -49.9% |     -91.8%
+  order_count                    |       1.50 |           2.00 |           4.00 |     -25.0% |     -62.5%
+  time_to_first_order_hours      |      74.50 |           9.50 |         563.00 |    +684.2% |     -86.8%
+  unique_connected_customers     |      15.00 |           3.00 |           0.00 |    +400.0% |      +nan%
+
+  abuse_group_13_slow_drip (MEDIUM) - Temporal spread - stretched redemption window
+  Members in test: 6 | Missed: 0
+  Feature                        |  Group_Med | TrainAbuse_Med | TrainLegit_Med |   vs_Abuse |   vs_Legit
+  ------------------------------ | ---------- | -------------- | -------------- | ---------- | ----------
+  cluster_size                   |      57.00 |           5.00 |           1.00 |   +1040.0% |   +5600.0%
+  max_device_user_count          |       5.00 |           1.00 |           1.00 |    +400.0% |    +400.0%
+  max_address_user_count         |       4.00 |           1.00 |           1.00 |    +300.0% |    +300.0%
+  max_payment_user_count         |       4.00 |           1.00 |           1.00 |    +300.0% |    +300.0%
+  max_ip_user_count              |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  order_redemption_rate          |       0.88 |           1.00 |           0.40 |     -12.5% |    +118.7%
+  average_spend                  |     880.01 |         897.81 |        3932.11 |      -2.0% |     -77.6%
+  total_spend                    |    2192.48 |        2434.03 |       14938.56 |      -9.9% |     -85.3%
+  order_count                    |       2.00 |           2.00 |           4.00 |      +0.0% |     -50.0%
+  time_to_first_order_hours      |      22.50 |           9.50 |         563.00 |    +136.8% |     -96.0%
+  unique_connected_customers     |       4.50 |           3.00 |           0.00 |     +50.0% |      +nan%
+
+  abuse_group_7_volume (MEDIUM) - High connectivity - large shared-device/IP rings
+  Members in test: 7 | Missed: 0
+  Feature                        |  Group_Med | TrainAbuse_Med | TrainLegit_Med |   vs_Abuse |   vs_Legit
+  ------------------------------ | ---------- | -------------- | -------------- | ---------- | ----------
+  cluster_size                   |      32.00 |           5.00 |           1.00 |    +540.0% |   +3100.0%
+  max_device_user_count          |       7.00 |           1.00 |           1.00 |    +600.0% |    +600.0%
+  max_address_user_count         |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  max_payment_user_count         |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  max_ip_user_count              |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  order_redemption_rate          |       0.86 |           1.00 |           0.40 |     -14.3% |    +114.3%
+  average_spend                  |     911.06 |         897.81 |        3932.11 |      +1.5% |     -76.8%
+  total_spend                    |    5807.42 |        2434.03 |       14938.56 |    +138.6% |     -61.1%
+  order_count                    |       7.00 |           2.00 |           4.00 |    +250.0% |     +75.0%
+  time_to_first_order_hours      |       6.00 |           9.50 |         563.00 |     -36.8% |     -98.9%
+  unique_connected_customers     |       6.00 |           3.00 |           0.00 |    +100.0% |      +nan%
+
+  --- XGBoost ---
+
+  abuse_group_1_evasive_stealth (HARD) - No shared entity fingerprints - looks like normal users
+  Members in test: 3 | Missed: 0
+  Feature                        |  Group_Med | TrainAbuse_Med | TrainLegit_Med |   vs_Abuse |   vs_Legit
+  ------------------------------ | ---------- | -------------- | -------------- | ---------- | ----------
+  cluster_size                   |       1.00 |           5.00 |           1.00 |     -80.0% |      +0.0%
+  max_device_user_count          |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  max_address_user_count         |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  max_payment_user_count         |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  max_ip_user_count              |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  order_redemption_rate          |       1.00 |           1.00 |           0.40 |      +0.0% |    +150.0%
+  average_spend                  |    1138.83 |         897.81 |        3932.11 |     +26.8% |     -71.0%
+  total_spend                    |    1433.99 |        2434.03 |       14938.56 |     -41.1% |     -90.4%
+  order_count                    |       1.00 |           2.00 |           4.00 |     -50.0% |     -75.0%
+  time_to_first_order_hours      |      22.00 |           9.50 |         563.00 |    +131.6% |     -96.1%
+  unique_connected_customers     |       0.00 |           3.00 |           0.00 |    -100.0% |      +nan%
+
+  abuse_group_8_patient (HARD) - Slow timing - overlaps with legitimate behavior
+  Members in test: 4 | Missed: 0
+  Feature                        |  Group_Med | TrainAbuse_Med | TrainLegit_Med |   vs_Abuse |   vs_Legit
+  ------------------------------ | ---------- | -------------- | -------------- | ---------- | ----------
+  cluster_size                   |      33.00 |           5.00 |           1.00 |    +560.0% |   +3200.0%
+  max_device_user_count          |       4.00 |           1.00 |           1.00 |    +300.0% |    +300.0%
+  max_address_user_count         |       4.00 |           1.00 |           1.00 |    +300.0% |    +300.0%
+  max_payment_user_count         |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  max_ip_user_count              |      13.50 |           1.00 |           1.00 |   +1250.0% |   +1250.0%
+  order_redemption_rate          |       1.00 |           1.00 |           0.40 |      +0.0% |    +150.0%
+  average_spend                  |     878.38 |         897.81 |        3932.11 |      -2.2% |     -77.7%
+  total_spend                    |    1219.07 |        2434.03 |       14938.56 |     -49.9% |     -91.8%
+  order_count                    |       1.50 |           2.00 |           4.00 |     -25.0% |     -62.5%
+  time_to_first_order_hours      |      74.50 |           9.50 |         563.00 |    +684.2% |     -86.8%
+  unique_connected_customers     |      15.00 |           3.00 |           0.00 |    +400.0% |      +nan%
+
+  abuse_group_13_slow_drip (MEDIUM) - Temporal spread - stretched redemption window
+  Members in test: 6 | Missed: 0
+  Feature                        |  Group_Med | TrainAbuse_Med | TrainLegit_Med |   vs_Abuse |   vs_Legit
+  ------------------------------ | ---------- | -------------- | -------------- | ---------- | ----------
+  cluster_size                   |      57.00 |           5.00 |           1.00 |   +1040.0% |   +5600.0%
+  max_device_user_count          |       5.00 |           1.00 |           1.00 |    +400.0% |    +400.0%
+  max_address_user_count         |       4.00 |           1.00 |           1.00 |    +300.0% |    +300.0%
+  max_payment_user_count         |       4.00 |           1.00 |           1.00 |    +300.0% |    +300.0%
+  max_ip_user_count              |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  order_redemption_rate          |       0.88 |           1.00 |           0.40 |     -12.5% |    +118.7%
+  average_spend                  |     880.01 |         897.81 |        3932.11 |      -2.0% |     -77.6%
+  total_spend                    |    2192.48 |        2434.03 |       14938.56 |      -9.9% |     -85.3%
+  order_count                    |       2.00 |           2.00 |           4.00 |      +0.0% |     -50.0%
+  time_to_first_order_hours      |      22.50 |           9.50 |         563.00 |    +136.8% |     -96.0%
+  unique_connected_customers     |       4.50 |           3.00 |           0.00 |     +50.0% |      +nan%
+
+  abuse_group_7_volume (MEDIUM) - High connectivity - large shared-device/IP rings
+  Members in test: 7 | Missed: 0
+  Feature                        |  Group_Med | TrainAbuse_Med | TrainLegit_Med |   vs_Abuse |   vs_Legit
+  ------------------------------ | ---------- | -------------- | -------------- | ---------- | ----------
+  cluster_size                   |      32.00 |           5.00 |           1.00 |    +540.0% |   +3100.0%
+  max_device_user_count          |       7.00 |           1.00 |           1.00 |    +600.0% |    +600.0%
+  max_address_user_count         |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  max_payment_user_count         |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  max_ip_user_count              |       1.00 |           1.00 |           1.00 |      +0.0% |      +0.0%
+  order_redemption_rate          |       0.86 |           1.00 |           0.40 |     -14.3% |    +114.3%
+  average_spend                  |     911.06 |         897.81 |        3932.11 |      +1.5% |     -76.8%
+  total_spend                    |    5807.42 |        2434.03 |       14938.56 |    +138.6% |     -61.1%
+  order_count                    |       7.00 |           2.00 |           4.00 |    +250.0% |     +75.0%
+  time_to_first_order_hours      |       6.00 |           9.50 |         563.00 |     -36.8% |     -98.9%
+  unique_connected_customers     |       6.00 |           3.00 |           0.00 |    +100.0% |      +nan%
+
+[9/13] Model-specific behavior analysis...
+
+====================================================================================================
+  MODEL-SPECIFIC BEHAVIOR ANALYSIS
+====================================================================================================
+
+  --- Agreement Matrix (test set) ---
+                           LogisticRe   RandomFore      XGBoost
+  LogisticRegression              158/158          157/158          157/158
+  RandomForest                    157/158          158/158          158/158
+  XGBoost                         157/158          158/158          158/158
+
+  --- Confusion Matrix Per Model (test set) ---
+  LogisticRegression    : TN=137 FP=  1 FN=  0 TP= 20
+  RandomForest          : TN=138 FP=  0 FN=  0 TP= 20
+  XGBoost               : TN=138 FP=  0 FN=  0 TP= 20
+
+  --- Samples with DISAGREEMENT (abuse customers) ---
+  [AGREE_ALL] c33af7b2-0c08-4edb-ba8c-c23ad8e0f061 group=abuse_group_13_slow_drip preds=111 probs=LogisticRegression=1.00 | RandomForest=1.00 | XGBoost=1.00
+  [AGREE_ALL] ea45b8df-999b-4229-a695-049d5eafca38 group=abuse_group_1_evasive_stealth preds=111 probs=LogisticRegression=1.00 | RandomForest=1.00 | XGBoost=1.00
+  [AGREE_ALL] 8c98afd7-94d7-492c-b43a-0bb325f09879 group=abuse_group_7_volume preds=111 probs=LogisticRegression=1.00 | RandomForest=1.00 | XGBoost=1.00
+  [AGREE_ALL] 8ba49967-88cf-4385-85f7-2ab8a595487e group=abuse_group_1_evasive_stealth preds=111 probs=LogisticRegression=0.98 | RandomForest=1.00 | XGBoost=1.00
+  [AGREE_ALL] be850d80-e8dc-41fe-9234-0211dd683a56 group=abuse_group_7_volume preds=111 probs=LogisticRegression=1.00 | RandomForest=1.00 | XGBoost=1.00
+  [AGREE_ALL] cbc88fe3-928d-4a06-a5b0-5ee9200abbe9 group=abuse_group_13_slow_drip preds=111 probs=LogisticRegression=1.00 | RandomForest=1.00 | XGBoost=1.00
+  [AGREE_ALL] d096f2a0-e863-4486-ae66-8e22c341b89d group=abuse_group_13_slow_drip preds=111 probs=LogisticRegression=1.00 | RandomForest=1.00 | XGBoost=1.00
+  [AGREE_ALL] 78b888ea-cdc2-4f67-8d0b-f0c8b7fef6f0 group=abuse_group_8_patient preds=111 probs=LogisticRegression=1.00 | RandomForest=1.00 | XGBoost=1.00
+  [AGREE_ALL] 50e5fcaf-99a1-4e17-89a5-9fdf78773a7e group=abuse_group_8_patient preds=111 probs=LogisticRegression=1.00 | RandomForest=1.00 | XGBoost=1.00
+  [AGREE_ALL] 1918630f-30b2-4054-9d84-6b2d5e56f7f5 group=abuse_group_13_slow_drip preds=111 probs=LogisticRegression=1.00 | RandomForest=0.99 | XGBoost=1.00
+  [AGREE_ALL] da871e4b-b06f-43cd-b7fe-f8618cbe1435 group=abuse_group_8_patient preds=111 probs=LogisticRegression=0.99 | RandomForest=1.00 | XGBoost=1.00
+  [AGREE_ALL] 30ff24f6-3d23-4cac-a982-0c7923a6bf4e group=abuse_group_13_slow_drip preds=111 probs=LogisticRegression=1.00 | RandomForest=0.97 | XGBoost=1.00
+  [AGREE_ALL] 3ff47a5c-212e-46a9-90c6-370b82ee1898 group=abuse_group_8_patient preds=111 probs=LogisticRegression=1.00 | RandomForest=1.00 | XGBoost=1.00
+  [AGREE_ALL] 85bf5655-5e67-47ba-a754-4dd7e0c8e83e group=abuse_group_7_volume preds=111 probs=LogisticRegression=1.00 | RandomForest=1.00 | XGBoost=1.00
+  [AGREE_ALL] b69296af-ee80-44e1-b343-dd763c0aacee group=abuse_group_7_volume preds=111 probs=LogisticRegression=1.00 | RandomForest=1.00 | XGBoost=1.00
+  [AGREE_ALL] a18a887b-25fb-4136-9e0c-b6d6ebb30426 group=abuse_group_7_volume preds=111 probs=LogisticRegression=1.00 | RandomForest=1.00 | XGBoost=1.00
+  [AGREE_ALL] e8118e91-8b4d-4057-8219-0275fbfb292c group=abuse_group_7_volume preds=111 probs=LogisticRegression=1.00 | RandomForest=0.73 | XGBoost=1.00
+  [AGREE_ALL] e71ea0a6-a375-4c14-8c2c-d422c9660a0f group=abuse_group_1_evasive_stealth preds=111 probs=LogisticRegression=0.99 | RandomForest=1.00 | XGBoost=1.00
+  [AGREE_ALL] 9b9dca66-6b9e-4531-a758-3e5718a2ee02 group=abuse_group_7_volume preds=111 probs=LogisticRegression=1.00 | RandomForest=0.98 | XGBoost=1.00
+  [AGREE_ALL] bc0d2cb6-c467-4204-bbda-18e1ccabda79 group=abuse_group_13_slow_drip preds=111 probs=LogisticRegression=0.97 | RandomForest=1.00 | XGBoost=1.00
+
+  --- Samples with DISAGREEMENT (legit customers) ---
+  [DISAGREE] 493f2b4b-26ba-41cc-871b-3f44d33ec2d1 preds=100 probs=LogisticRegression=0.51 | RandomForest=0.42 | XGBoost=0.10
+
+  --- Feature Importance Rankings Comparison ---
+
+  Features with GREATEST model disagreement (rank_spread = max_rank - min_rank):
+  Feature                             |  LR_rank |  RF_rank | XGB_rank |   Spread
+  ----------------------------------- | -------- | -------- | -------- | --------
+  max_entity_degree                   |       15 |        6 |       14 |        9
+  total_spend                         |        7 |        2 |       10 |        8
+  cluster_size                        |       10 |        8 |        4 |        6
+  redemption_count                    |        8 |       13 |       14 |        6
+  max_ip_user_count                   |       11 |       14 |        9 |        5
+  max_device_user_count               |        6 |        7 |        2 |        5
+  account_age_days                    |        9 |       11 |        6 |        5
+  order_count                         |        5 |        9 |        5 |        4
+  time_to_first_order_hours           |        3 |        3 |        7 |        4
+  time_to_first_redemption_hours      |        4 |        4 |        8 |        4
+
+  Features with GREATEST model agreement (rank_spread):
+  order_redemption_rate               |        2 |        5 |        3 |        3
+  max_payment_user_count              |       12 |       15 |       14 |        3
+  max_address_user_count              |       16 |       16 |       14 |        2
+  avg_entity_degree                   |       14 |       12 |       14 |        2
+  average_spend                       |        1 |        1 |        1 |        0
+
+[10/13] LR performance: test-set fitting vs real capability...
+
+====================================================================================================
+  LR PERFORMANCE: TEST-SET FITTING vs REAL CAPABILITY
+====================================================================================================
+
+  [A] Val vs Test Gap (LR):
+    accuracy    : val=0.9732, test=0.9937, gap=+0.0205 >
+    precision   : val=0.7333, test=0.9524, gap=+0.2190 >
+    recall      : val=1.0000, test=1.0000, gap=+0.0000 =
+    f1          : val=0.8462, test=0.9756, gap=+0.1295 >
+    roc_auc     : val=0.9947, test=1.0000, gap=+0.0053 >
+    pr_auc      : val=0.9273, test=1.0000, gap=+0.0727 >
+
+  [B] LR vs Other Models (Test F1 comparison):
+    LogisticRegression    : F1=0.9756, ROC=1.0000
+    RandomForest          : F1=1.0000, ROC=1.0000
+    XGBoost               : F1=1.0000, ROC=1.0000
+
+  [C] Probability Calibration (Brier Score - lower is better):
+    LogisticRegression    : Brier=0.0058
+    RandomForest          : Brier=0.0022
+    XGBoost               : Brier=0.0001
+
+  [D] LR Probability Distribution (test set):
+    Overall: min=0.0000, max=1.0000, mean=0.1473, std=0.3312
+    Abuse (n=20): mean=0.9961, min=0.9700, max=1.0000
+    Legit (n=138): mean=0.0243, min=0.0000, max=0.5149
+
+    [E] KS-test (LR prob: abuse vs legit): KS=1.0000, p=0.000000
+
+  [F] Cross-Validation Stability Check (LR, 5-fold on train+val):
+    5-Fold CV F1: ['0.800', '0.828', '0.846', '0.688', '0.750']
+    5-Fold CV F1: mean=0.7822 +/- 0.0574
+    5-Fold CV ROC: mean=0.9949 +/- 0.0055
+    Test set F1 (original): 0.9756
+    CV mean F1 vs Test F1 gap: -0.1934 (concerning)
+
+  [G] Potential Shortcut Indicators:
+    Top 5 LR features by |coefficient|:
+      average_spend                      : coef=-2.4902
+      order_redemption_rate              : coef=+1.9691
+      time_to_first_order_hours          : coef=-1.9427
+      time_to_first_redemption_hours     : coef=-1.7907
+      order_count                        : coef=-1.4643
+
+    F1 using only top-2 LR features (average_spend, order_redemption_rate): 0.7843
+    F1 using all 16 features: 0.9756
+    F1 using only top-5 LR features: 0.8889
+
+    average_spend coefficient: -2.4902 (|coef| rank: 1)
+
+  [H] Verdict:
+    PRELIMINARILY STRONG: LR looks good but investigate shortcuts.
+
+[11/13] 5-Fold cross-validation (all models)...
+
+====================================================================================================
+  5-FOLD CROSS-VALIDATION (on train+val) - ALL MODELS
+====================================================================================================
+
+  LogisticRegression:
+    F1 per fold:  ['0.800', '0.828', '0.846', '0.688', '0.774']
+    F1: mean=0.7871 +/- 0.0555
+    ROC per fold: ['0.999', '0.998', '0.998', '0.985', '0.995']
+    ROC: mean=0.9951 +/- 0.0053
+
+  RandomForest:
+    F1 per fold:  ['1.000', '0.960', '0.880', '0.917', '0.909']
+    F1: mean=0.9332 +/- 0.0421
+    ROC per fold: ['1.000', '1.000', '0.998', '0.997', '0.999']
+    ROC: mean=0.9989 +/- 0.0010
+
+  XGBoost:
+    F1 per fold:  ['0.957', '1.000', '0.833', '0.857', '0.870']
+    F1: mean=0.9033 +/- 0.0638
+    ROC per fold: ['1.000', '1.000', '0.997', '0.997', '0.997']
+    ROC: mean=0.9981 +/- 0.0015
+
+[12/13] Generating visualizations...
+
+  Generating visualizations...
+Traceback (most recent call last):
+  File "E:\offer-abuse-detection\comprehensive_analysis.py", line 1063, in <module>
+    main()
+    ~~~~^^
+  File "E:\offer-abuse-detection\comprehensive_analysis.py", line 1050, in main
+    generate_visualizations(splits, results, feature_cols)
+    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "E:\offer-abuse-detection\comprehensive_analysis.py", line 838, in generate_visualizations
+    ax_sub = fig.add_subplot(gs[3, fi] if n_feats <= 5 else
+                             ~~^^^^^^^
+  File "E:\offer-abuse-detection\.venv\Lib\site-packages\matplotlib\gridspec.py", line 243, in __getitem__
+    [_normalize(k1, nrows, 0), _normalize(k2, ncols, 1)],
+                               ~~~~~~~~~~^^^^^^^^^^^^^^
+  File "E:\offer-abuse-detection\.venv\Lib\site-packages\matplotlib\gridspec.py", line 231, in _normalize
+    raise IndexError(f"index {orig_key} is out of bounds for "
+                     f"axis {axis} with size {size}")
+IndexError: index 3 is out of bounds for axis 1 with size 3
