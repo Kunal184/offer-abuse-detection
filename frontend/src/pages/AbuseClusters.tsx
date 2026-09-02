@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import * as d3 from 'd3';
 import { loadClusters, loadGraph } from '../api/client';
 import { useAppStore } from '../store/appStore';
 
@@ -15,7 +16,6 @@ export default function AbuseClustersPage() {
   const setLoading = useAppStore((s) => s.setLoading);
   const setError = useAppStore((s) => s.setError);
 
-  // Track local errors independently so a clusters failure doesn't erase graph data
   const [clusterError, setClusterError] = useState<string | null>(null);
   const [graphError, setGraphError] = useState<string | null>(null);
 
@@ -33,12 +33,10 @@ export default function AbuseClustersPage() {
           const msg = e instanceof Error ? e.message : String(e);
           setClusterError(msg);
           setError('clusters', msg);
-          // Do NOT call setClusters([]) — that would erase data loaded by Overview
         })
         .finally(() => setLoading('clusters', false));
     }
 
-    // Load graph independently — a failure here must NOT clear cluster data
     if (store.graphNodes.length === 0 && !store.loading.graph) {
       setLoading('graph', true);
       setGraphError(null);
@@ -50,7 +48,6 @@ export default function AbuseClustersPage() {
           const msg = e instanceof Error ? e.message : String(e);
           setGraphError(msg);
           setError('graph', msg);
-          // Do NOT call setGraph([], []) — that clears what was successfully loaded
         })
         .finally(() => setLoading('graph', false));
     }
@@ -87,15 +84,26 @@ export default function AbuseClustersPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 24 }}>
         {/* Graph visualization */}
         <div className="card">
-          <div className="card-body">
-            <h3 className="section-label" style={{ marginBottom: 16 }}>RELATIONSHIP GRAPH</h3>
-            <div style={{ background: 'var(--bg-page)', borderRadius: 8, overflow: 'hidden', height: 480 }}>
+          <div className="card-body" style={{ padding: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 className="section-label" style={{ margin: 0 }}>RELATIONSHIP GRAPH</h3>
+              {selectedCluster && (
+                <button
+                  className="btn btn-ghost"
+                  style={{ fontSize: 10, padding: '2px 8px' }}
+                  onClick={() => setSelectedCluster(null)}
+                >
+                  Clear Selection ({selectedCluster.id.toUpperCase()}) ✕
+                </button>
+              )}
+            </div>
+            <div style={{ background: '#0A0A0A', borderRadius: 8, overflow: 'hidden', height: 480, position: 'relative' }}>
               {loadingGraph ? (
                 <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading graph...</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading graph data...</span>
                 </div>
               ) : graphError && graphNodes.length === 0 ? (
                 <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
@@ -107,9 +115,7 @@ export default function AbuseClustersPage() {
                   <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>No graph data</span>
                 </div>
               ) : (
-                // Key the graph on nodes length so it never remounts due to empty → loaded transitions
-                <RelationshipGraph
-                  key={`graph-${graphNodes.length}`}
+                <ForceRelationshipGraph
                   nodes={graphNodes}
                   links={graphLinks}
                   clusters={clusters}
@@ -118,9 +124,11 @@ export default function AbuseClustersPage() {
                 />
               )}
             </div>
-            <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 12 }}>
-              Steel-gray nodes: customer / entity · Red nodes: flagged cluster members
-            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', margin: 0 }}>
+                Circles: Customers · Squares: Shared Entities · Drag to move · Scroll to zoom
+              </p>
+            </div>
           </div>
         </div>
 
@@ -143,79 +151,84 @@ export default function AbuseClustersPage() {
                 <div className="empty-state-desc">No coordinated abuse detected</div>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 480, overflowY: 'auto' }}>
-                {clusters.map((cluster) => (
-                  <div
-                    key={cluster.id}
-                    className="card card-sm"
-                    style={{
-                      cursor: 'pointer',
-                      borderColor: selectedCluster?.id === cluster.id ? '#D9391F' : 'var(--border)',
-                      background: selectedCluster?.id === cluster.id ? 'var(--bg-elevated)' : 'var(--bg-card)',
-                    }}
-                    onClick={() => setSelectedCluster(selectedCluster?.id === cluster.id ? null : cluster)}
-                  >
-                    <div style={{ padding: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div>
-                        <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
-                          {cluster.id}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 440, overflowY: 'auto', paddingRight: 4 }}>
+                {clusters.map((cluster) => {
+                  const isSelected = selectedCluster?.id === cluster.id;
+                  const totalSharedCount = cluster.sharedEntities.reduce((a, e) => a + e.count, 0);
+
+                  return (
+                    <div
+                      key={cluster.id}
+                      style={{
+                        background: isSelected ? '#1E1E1C' : '#141414',
+                        border: `1px solid ${isSelected ? '#D9391F' : '#282826'}`,
+                        borderRadius: 8,
+                        padding: '12px 16px',
+                        cursor: 'pointer',
+                        transition: 'all 150ms ease',
+                      }}
+                      onClick={() => setSelectedCluster(isSelected ? null : cluster)}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <div style={{ fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>
+                            {cluster.id.toUpperCase()}
+                          </div>
+                          <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 3 }}>
+                            <span style={{ color: cluster.flaggedCustomerCount > 0 ? '#D9391F' : 'inherit', fontWeight: 600 }}>
+                              {cluster.flaggedCustomerCount} flagged
+                            </span>
+                            {' · '}{cluster.customerCount} accounts · {totalSharedCount} shared
+                          </div>
                         </div>
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 2 }}>
-                          {cluster.customerCount} accounts · {cluster.flaggedCustomerCount} flagged
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: 6 }}>
                         <span className={`badge ${cluster.overallRisk === 'high' ? 'badge-high' : cluster.overallRisk === 'medium' ? 'badge-medium' : 'badge-clear'}`}>
                           {cluster.overallRisk}
                         </span>
                       </div>
-                    </div>
-                    {selectedCluster?.id === cluster.id && (
-                      <div className="detail-panel" style={{ borderTop: '1px solid var(--border)' }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                          <div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Customers</div>
-                            <div className="mono" style={{ fontSize: 14, fontWeight: 600 }}>{cluster.customerCount}</div>
-                          </div>
-                          <div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Flagged</div>
-                            <div className="mono" style={{ fontSize: 14, fontWeight: 600, color: 'var(--risk-high)' }}>{cluster.flaggedCustomerCount}</div>
-                          </div>
-                          <div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Shared</div>
-                            <div className="mono" style={{ fontSize: 14, fontWeight: 600 }}>
-                              {cluster.sharedEntities.reduce((a, e) => a + e.count, 0)}
+
+                      {isSelected && (
+                        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid #2E2E2C' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 12 }}>
+                            <div style={{ background: '#0A0A0A', padding: '8px 10px', borderRadius: 4 }}>
+                              <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Accounts</div>
+                              <div className="mono" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{cluster.customerCount}</div>
+                            </div>
+                            <div style={{ background: '#0A0A0A', padding: '8px 10px', borderRadius: 4 }}>
+                              <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Flagged</div>
+                              <div className="mono" style={{ fontSize: 14, fontWeight: 700, color: '#D9391F' }}>{cluster.flaggedCustomerCount}</div>
+                            </div>
+                            <div style={{ background: '#0A0A0A', padding: '8px 10px', borderRadius: 4 }}>
+                              <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Shared</div>
+                              <div className="mono" style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)' }}>{totalSharedCount}</div>
                             </div>
                           </div>
+
+                          <div style={{ marginBottom: 10 }}>
+                            <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Shared Entities</div>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                              {cluster.sharedEntities.filter((e) => e.count > 0).map((e) => (
+                                <span key={e.type} className="badge badge-neutral" style={{ fontSize: 10 }}>
+                                  {e.type}: {e.count}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
                           <div>
-                            <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Risk</div>
-                            <div className="mono" style={{ fontSize: 14, fontWeight: 600 }}>{cluster.overallRisk}</div>
+                            <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Member Accounts</div>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                              {cluster.customers.slice(0, 8).map((c: string) => (
+                                <span key={c} className="mono" style={{ fontSize: 10, color: 'var(--text-secondary)', background: '#0A0A0A', padding: '2px 6px', borderRadius: 3, border: '1px solid #242422' }}>
+                                  {c.slice(0, 8)}…
+                                </span>
+                              ))}
+                            </div>
                           </div>
                         </div>
-                        <div style={{ marginTop: 12 }}>
-                          <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Shared Entities</div>
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            {cluster.sharedEntities.map((e) => (
-                              <span key={e.type} className="badge badge-neutral" style={{ fontSize: 10 }}>
-                                {e.type}: {e.count}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                        <div style={{ marginTop: 12 }}>
-                          <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Customers</div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                            {cluster.customers.slice(0, 8).map((c: string) => (
-                              <span key={c} className="mono" style={{ fontSize: 10, color: 'var(--text-secondary)', background: 'var(--bg-card)', padding: '2px 6px', borderRadius: 3 }}>
-                                {c.slice(0, 6)}…
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -225,9 +238,28 @@ export default function AbuseClustersPage() {
   );
 }
 
-/* ─── Relationship graph component ─────────────────────────── */
+/* ─── D3 Force-Directed Relationship Graph Component ─────────────────────────── */
 
-function RelationshipGraph({
+interface GraphNodeItem {
+  id: string;
+  type: string;
+  label: string;
+  x?: number;
+  y?: number;
+  vx?: number;
+  vy?: number;
+  fx?: number | null;
+  fy?: number | null;
+}
+
+interface GraphLinkItem {
+  source: any;
+  target: any;
+  sourceType: string;
+  targetType: string;
+}
+
+function ForceRelationshipGraph({
   nodes,
   links,
   clusters,
@@ -240,17 +272,12 @@ function RelationshipGraph({
   selectedCluster: any;
   onSelectCluster: (c: any) => void;
 }) {
-  const [hovered, setHovered] = useState<string | null>(null);
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const containerRef = useRef<SVGGElement | null>(null);
 
-  // If a cluster is selected, highlight its nodes & edges
-  const activeClusterNodeIds = useMemo(() => {
-    if (!selectedCluster) return null;
-    const ids = new Set<string>();
-    selectedCluster.customers.forEach((c: string) => ids.add(`c_${c}`));
-    selectedCluster.entities.forEach((e: string) => ids.add(e));
-    return ids;
-  }, [selectedCluster]);
+  const [activeTooltip, setActiveTooltip] = useState<{ x: number; y: number; node: GraphNodeItem } | null>(null);
 
+  // Set of flagged customer node IDs
   const flaggedIds = useMemo(() => {
     const set = new Set<string>();
     clusters.forEach((c) => {
@@ -261,175 +288,291 @@ function RelationshipGraph({
     return set;
   }, [clusters]);
 
-  // Layout: customers in inner circle, entities in outer circle
-  const displayNodes = useMemo(() => nodes.slice(0, 45), [nodes]);
-  const displayNodeIds = useMemo(() => new Set(displayNodes.map((n) => n.id)), [displayNodes]);
+  // Extract relevant subgraph for simulation
+  const { subNodes, subLinks } = useMemo(() => {
+    let targetNodeIds: Set<string>;
 
-  const customers = useMemo(() => displayNodes.filter((n) => n.type === 'customer'), [displayNodes]);
-  const entities = useMemo(() => displayNodes.filter((n) => n.type !== 'customer'), [displayNodes]);
+    if (selectedCluster) {
+      targetNodeIds = new Set<string>();
+      selectedCluster.customers.forEach((cid: string) => targetNodeIds.add(`c_${cid}`));
+      selectedCluster.entities.forEach((eid: string) => targetNodeIds.add(eid));
+    } else {
+      // Show nodes from top clusters
+      targetNodeIds = new Set<string>();
+      const topClusters = clusters.slice(0, 8);
+      topClusters.forEach((c) => {
+        c.customers.forEach((cid: string) => targetNodeIds.add(`c_${cid}`));
+        c.entities.forEach((eid: string) => targetNodeIds.add(eid));
+      });
+      // Fallback if no clusters
+      if (targetNodeIds.size === 0) {
+        nodes.slice(0, 100).forEach((n) => targetNodeIds.add(n.id));
+      }
+    }
 
-  const positions = useMemo(() => {
-    const pos: Record<string, { x: number; y: number }> = {};
-    const cx = 200, cy = 200;
-    const innerR = 75, outerR = 145;
+    const filteredNodes: GraphNodeItem[] = nodes
+      .filter((n) => targetNodeIds.has(n.id))
+      .map((n) => ({ ...n }));
 
-    customers.forEach((n, i) => {
-      const angle = (i / Math.max(customers.length, 1)) * 2 * Math.PI - Math.PI / 2;
-      pos[n.id] = { x: cx + Math.cos(angle) * innerR, y: cy + Math.sin(angle) * innerR };
+    const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
+
+    const filteredLinks: GraphLinkItem[] = links
+      .filter((l) => filteredNodeIds.has(l.source) && filteredNodeIds.has(l.target))
+      .map((l) => ({ ...l }));
+
+    return { subNodes: filteredNodes, subLinks: filteredLinks };
+  }, [nodes, links, clusters, selectedCluster]);
+
+  useEffect(() => {
+    if (!svgRef.current || !containerRef.current || subNodes.length === 0) return;
+
+    const width = 500;
+    const height = 480;
+
+    const svg = d3.select(svgRef.current);
+    const container = d3.select(containerRef.current);
+
+    // Clear previous rendering
+    container.selectAll('*').remove();
+
+    // D3 Zoom setup
+    const zoomBehavior = d3
+      .zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.3, 4])
+      .on('zoom', (event) => {
+        container.attr('transform', event.transform);
+      });
+
+    svg.call(zoomBehavior);
+    svg.call(zoomBehavior.transform, d3.zoomIdentity.translate(0, 0).scale(1));
+
+    // Force simulation
+    const simulation = d3
+      .forceSimulation<GraphNodeItem>(subNodes)
+      .force(
+        'link',
+        d3
+          .forceLink<GraphNodeItem, GraphLinkItem>(subLinks)
+          .id((d) => d.id)
+          .distance(60)
+      )
+      .force('charge', d3.forceManyBody().strength(-160))
+      .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('collide', d3.forceCollide(20));
+
+    // Draw links
+    const linkGroup = container.append('g').attr('class', 'links');
+
+    const linkElements = linkGroup
+      .selectAll<SVGLineElement, GraphLinkItem>('line')
+      .data(subLinks)
+      .enter()
+      .append('line')
+      .attr('stroke', (d) => {
+        const sId = typeof d.source === 'object' ? d.source.id : d.source;
+        const tId = typeof d.target === 'object' ? d.target.id : d.target;
+        const isFlaggedEdge = flaggedIds.has(sId) || flaggedIds.has(tId);
+        return isFlaggedEdge ? '#D9391F' : '#2E2E2C';
+      })
+      .attr('stroke-width', (d) => {
+        const sId = typeof d.source === 'object' ? d.source.id : d.source;
+        const tId = typeof d.target === 'object' ? d.target.id : d.target;
+        return flaggedIds.has(sId) || flaggedIds.has(tId) ? 1.8 : 1.0;
+      })
+      .attr('stroke-opacity', 0.6)
+      .style('transition', 'stroke-opacity 200ms ease');
+
+    // Draw nodes
+    const nodeGroup = container.append('g').attr('class', 'nodes');
+
+    const nodeElements = nodeGroup
+      .selectAll<SVGGElement, GraphNodeItem>('g')
+      .data(subNodes)
+      .enter()
+      .append('g')
+      .attr('cursor', 'pointer')
+      .style('opacity', 0)
+      .call(
+        d3
+          .drag<SVGGElement, GraphNodeItem>()
+          .on('start', (event, d) => {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+          })
+          .on('drag', (event, d) => {
+            d.fx = event.x;
+            d.fy = event.y;
+          })
+          .on('end', (event, d) => {
+            if (!event.active) simulation.alphaTarget(0);
+            d.fx = null;
+            d.fy = null;
+          })
+      );
+
+    // Fade-in stagger animation for nodes
+    nodeElements
+      .transition()
+      .duration(400)
+      .delay((_, i) => Math.min(i * 15, 600))
+      .style('opacity', 1);
+
+    // Node shape and style rendering
+    nodeElements.each(function (d) {
+      const g = d3.select(this);
+      const isCustomer = d.type === 'customer';
+      const isFlagged = flaggedIds.has(d.id);
+
+      const color = isFlagged
+        ? '#D9391F'
+        : isCustomer
+        ? '#FAFAF8'
+        : d.type === 'device'
+        ? '#EF9F27'
+        : d.type === 'payment'
+        ? '#1D9E75'
+        : '#9BA3AB';
+
+      // Pulse halo for flagged nodes
+      if (isFlagged) {
+        g.append('circle')
+          .attr('r', 12)
+          .attr('fill', 'none')
+          .attr('stroke', '#D9391F')
+          .attr('stroke-width', 1.5)
+          .attr('opacity', 0.6)
+          .attr('class', 'pulse-cluster');
+      }
+
+      if (isCustomer) {
+        g.append('circle')
+          .attr('r', 7)
+          .attr('fill', color);
+      } else {
+        const size = d.type === 'device' || d.type === 'payment' ? 12 : 10;
+        g.append('rect')
+          .attr('x', -size / 2)
+          .attr('y', -size / 2)
+          .attr('width', size)
+          .attr('height', size)
+          .attr('rx', 2)
+          .attr('fill', color);
+      }
+
+      // Label text below node
+      g.append('text')
+        .text(d.type === 'customer' ? d.id.replace('c_', '').slice(0, 6) : d.label)
+        .attr('dy', 18)
+        .attr('text-anchor', 'middle')
+        .attr('font-size', 9)
+        .attr('fill', '#8A8A88')
+        .attr('font-family', 'JetBrains Mono, monospace');
     });
 
-    entities.forEach((n, i) => {
-      const angle = (i / Math.max(entities.length, 1)) * 2 * Math.PI - Math.PI / 2;
-      pos[n.id] = { x: cx + Math.cos(angle) * outerR, y: cy + Math.sin(angle) * outerR };
+    // Hover interactions
+    nodeElements
+      .on('mouseenter', (event, d) => {
+        const bounds = svgRef.current?.getBoundingClientRect();
+        if (bounds) {
+          setActiveTooltip({
+            x: event.clientX - bounds.left,
+            y: event.clientY - bounds.top - 40,
+            node: d,
+          });
+        }
+
+        // Highlight connected edges & nodes
+        const connectedNodeIds = new Set<string>([d.id]);
+        linkElements.each(function (l) {
+          const sId = typeof l.source === 'object' ? l.source.id : l.source;
+          const tId = typeof l.target === 'object' ? l.target.id : l.target;
+          if (sId === d.id) connectedNodeIds.add(tId);
+          if (tId === d.id) connectedNodeIds.add(sId);
+        });
+
+        nodeElements.style('opacity', (n) => (connectedNodeIds.has(n.id) ? 1 : 0.25));
+        linkElements.style('stroke-opacity', (l) => {
+          const sId = typeof l.source === 'object' ? l.source.id : l.source;
+          const tId = typeof l.target === 'object' ? l.target.id : l.target;
+          return sId === d.id || tId === d.id ? 1 : 0.15;
+        });
+      })
+      .on('mouseleave', () => {
+        setActiveTooltip(null);
+        nodeElements.style('opacity', 1);
+        linkElements.style('stroke-opacity', 0.6);
+      })
+      .on('click', (_, d) => {
+        const foundCluster = clusters.find((c) =>
+          c.customers.some((cid: string) => `c_${cid}` === d.id) || c.entities.includes(d.id)
+        );
+        if (foundCluster) onSelectCluster(foundCluster);
+      });
+
+    // Simulation tick handler
+    simulation.on('tick', () => {
+      linkElements
+        .attr('x1', (d) => (d.source as GraphNodeItem).x ?? 0)
+        .attr('y1', (d) => (d.source as GraphNodeItem).y ?? 0)
+        .attr('x2', (d) => (d.target as GraphNodeItem).x ?? 0)
+        .attr('y2', (d) => (d.target as GraphNodeItem).y ?? 0);
+
+      nodeElements.attr('transform', (d) => `translate(${d.x ?? 0},${d.y ?? 0})`);
     });
 
-    return pos;
-  }, [customers, entities]);
-
-  // Filter links connecting displayed nodes
-  const displayLinks = useMemo(() => {
-    return links.filter(
-      (l) => displayNodeIds.has(l.source) && displayNodeIds.has(l.target)
-    ).slice(0, 60);
-  }, [links, displayNodeIds]);
-
-  const hoveredNode = displayNodes.find((n) => n.id === hovered);
+    return () => {
+      simulation.stop();
+    };
+  }, [subNodes, subLinks, flaggedIds, clusters, onSelectCluster]);
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-      <svg viewBox="0 0 400 400" width="100%" height="100%" style={{ background: '#0A0A0A' }}>
-        {/* Render Connecting Edges */}
-        {displayLinks.map((l, i) => {
-          const p1 = positions[l.source];
-          const p2 = positions[l.target];
-          if (!p1 || !p2) return null;
+      <svg
+        ref={svgRef}
+        viewBox="0 0 500 480"
+        width="100%"
+        height="100%"
+        style={{ background: '#0A0A0A', display: 'block' }}
+      >
+        <g ref={containerRef} />
 
-          const isHoveredEdge = hovered && (l.source === hovered || l.target === hovered);
-          const isClusterEdge =
-            activeClusterNodeIds && activeClusterNodeIds.has(l.source) && activeClusterNodeIds.has(l.target);
-
-          const stroke = isHoveredEdge || isClusterEdge ? '#D9391F' : '#282826';
-          const strokeWidth = isHoveredEdge || isClusterEdge ? 1.8 : 0.8;
-          const opacity = hovered || activeClusterNodeIds ? (isHoveredEdge || isClusterEdge ? 1 : 0.15) : 0.4;
-
-          return (
-            <line
-              key={`link-${i}`}
-              x1={p1.x}
-              y1={p1.y}
-              x2={p2.x}
-              y2={p2.y}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeOpacity={opacity}
-              style={{ transition: 'all 200ms ease' }}
-            />
-          );
-        })}
-
-        {/* Render Nodes */}
-        {displayNodes.map((n) => {
-          const pos = positions[n.id] || { x: 200, y: 200 };
-          const isCustomer = n.type === 'customer';
-          const isFlagged = flaggedIds.has(n.id);
-          const isHovered = hovered === n.id;
-          const isSelected = activeClusterNodeIds?.has(n.id);
-
-          let opacity = 1;
-          if (hovered) {
-            const isConnected = displayLinks.some(
-              (l) => (l.source === hovered && l.target === n.id) || (l.target === hovered && l.source === n.id)
-            );
-            opacity = isHovered || isConnected ? 1 : 0.2;
-          } else if (activeClusterNodeIds) {
-            opacity = isSelected ? 1 : 0.25;
-          }
-
-          const nodeColor = isFlagged
-            ? '#D9391F'
-            : isCustomer
-            ? '#FAFAF8'
-            : n.type === 'device'
-            ? '#EF9F27'
-            : n.type === 'payment'
-            ? '#1D9E75'
-            : '#9BA3AB';
-
-          const nodeRadius = isCustomer ? (isHovered ? 9 : 7) : (isHovered ? 7 : 5);
-
-          return (
-            <g
-              key={n.id}
-              opacity={opacity}
-              onMouseEnter={() => setHovered(n.id)}
-              onMouseLeave={() => setHovered(null)}
-              onClick={() => {
-                const foundCluster = clusters.find((c) =>
-                  c.customers.some((cid: string) => `c_${cid}` === n.id) || c.entities.includes(n.id)
-                );
-                if (foundCluster) onSelectCluster(foundCluster);
-              }}
-              style={{ cursor: 'pointer', transition: 'opacity 200ms ease' }}
-            >
-              {isCustomer ? (
-                <circle cx={pos.x} cy={pos.y} r={nodeRadius} fill={nodeColor} />
-              ) : (
-                <rect
-                  x={pos.x - nodeRadius}
-                  y={pos.y - nodeRadius}
-                  width={nodeRadius * 2}
-                  height={nodeRadius * 2}
-                  rx={2}
-                  fill={nodeColor}
-                />
-              )}
-              {(isFlagged || isSelected) && (
-                <circle
-                  cx={pos.x}
-                  cy={pos.y}
-                  r={nodeRadius + 4}
-                  fill="none"
-                  stroke="#D9391F"
-                  strokeWidth={1.2}
-                  opacity={0.7}
-                  className={isFlagged ? 'pulse-cluster' : undefined}
-                />
-              )}
-            </g>
-          );
-        })}
-
-        {/* Legend */}
-        <g transform="translate(12, 375)">
+        {/* Legend Overlay */}
+        <g transform="translate(14, 455)">
           <circle cx={4} cy={0} r={4} fill="#FAFAF8" />
-          <text x={12} y={3} fontSize="8" fill="#8A8A88" fontFamily="JetBrains Mono">
+          <text x={12} y={3} fontSize="9" fill="#8A8A88" fontFamily="JetBrains Mono">
             CUSTOMER
           </text>
 
-          <circle cx={70} cy={0} r={4} fill="#D9391F" />
-          <text x={78} y={3} fontSize="8" fill="#8A8A88" fontFamily="JetBrains Mono">
+          <circle cx={76} cy={0} r={4} fill="#D9391F" />
+          <text x={84} y={3} fontSize="9" fill="#8A8A88" fontFamily="JetBrains Mono">
             FLAGGED
           </text>
 
-          <rect x={126} y={-4} width={8} height={8} rx={1} fill="#EF9F27" />
-          <text x={138} y={3} fontSize="8" fill="#8A8A88" fontFamily="JetBrains Mono">
+          <rect x={138} y={-4} width={8} height={8} rx={1} fill="#EF9F27" />
+          <text x={150} y={3} fontSize="9" fill="#8A8A88" fontFamily="JetBrains Mono">
             DEVICE
           </text>
 
-          <rect x={184} y={-4} width={8} height={8} rx={1} fill="#1D9E75" />
-          <text x={196} y={3} fontSize="8" fill="#8A8A88" fontFamily="JetBrains Mono">
+          <rect x={198} y={-4} width={8} height={8} rx={1} fill="#1D9E75" />
+          <text x={210} y={3} fontSize="9" fill="#8A8A88" fontFamily="JetBrains Mono">
             PAYMENT
+          </text>
+
+          <rect x={262} y={-4} width={8} height={8} rx={1} fill="#9BA3AB" />
+          <text x={274} y={3} fontSize="9" fill="#8A8A88" fontFamily="JetBrains Mono">
+            ADDRESS/IP
           </text>
         </g>
       </svg>
 
-      {/* Hover Tooltip Overlay */}
-      {hoveredNode && (
+      {/* Floating Tooltip */}
+      {activeTooltip && (
         <div
           style={{
             position: 'absolute',
-            bottom: 35,
-            left: '50%',
+            top: activeTooltip.y,
+            left: activeTooltip.x,
             transform: 'translateX(-50%)',
             background: '#1A1A1A',
             border: '1px solid #2E2E2C',
@@ -439,15 +582,15 @@ function RelationshipGraph({
             fontSize: 11,
             color: '#FAFAF8',
             fontFamily: 'JetBrains Mono, monospace',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+            boxShadow: '0 4px 14px rgba(0,0,0,0.6)',
             whiteSpace: 'nowrap',
-            zIndex: 10,
+            zIndex: 20,
           }}
         >
-          <span style={{ color: hoveredNode.type === 'customer' ? '#FAFAF8' : '#9BA3AB', textTransform: 'uppercase', marginRight: 6 }}>
-            [{hoveredNode.type}]
+          <span style={{ color: activeTooltip.node.type === 'customer' ? '#FAFAF8' : '#EF9F27', textTransform: 'uppercase', marginRight: 6 }}>
+            [{activeTooltip.node.type}]
           </span>
-          {hoveredNode.label}
+          {activeTooltip.node.id}
         </div>
       )}
     </div>
