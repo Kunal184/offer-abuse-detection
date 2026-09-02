@@ -1,0 +1,87 @@
+/* Editorial Activity Page Styling */
+.activity-container {
+  width: 100%;
+  color: #FAFAF8;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.activity-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid rgba(244, 243, 238, 0.12);
+  padding-bottom: 1.5rem;
+}
+
+.activity-title {
+  font-family: 'League Gothic', 'Bebas Neue', sans-serif;
+  font-size: 3.5rem;
+  font-weight: 400;
+  color: #FAFAF8;
+  letter-spacing: 0.02em;
+  line-height: 0.9;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.activity-subtitle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 0.4rem;
+}
+
+.activity-feed-card {
+  background: #111215;
+  border: 1px solid rgba(244, 243, 238, 0.12);
+  padding: 1.5rem 2rem;
+}
+
+.activity-row {
+  display: grid;
+  grid-template-columns: 100px 220px 1fr 20px;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(244, 243, 238, 0.08);
+}
+
+.activity-row:last-child {
+  border-bottom: none;
+}
+
+.activity-row-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  color: rgba(250, 250, 248, 0.6);
+}
+
+.activity-row-type {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.activity-row-type.sev-high { color: #E5341C; }
+.activity-row-type.sev-medium { color: #EF9F27; }
+.activity-row-type.sev-info { color: #1D9E75; }
+
+.activity-row-desc {
+  font-size: 0.88rem;
+  color: #FAFAF8;
+}
+
+.activity-row-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.activity-row-dot.sev-high { background: #E5341C; box-shadow: 0 0 8px #E5341C; }
+.activity-row-dot.sev-medium { background: #EF9F27; }
+.activity-row-dot.sev-info { background: #1D9E75; }
