@@ -55,6 +55,20 @@ class BackendPredictionTest(unittest.TestCase):
             },
         )
 
+    def test_get_scored_customers_endpoint(self):
+        response = TestClient(app).get("/v1/data/scored-customers")
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertIsInstance(body, list)
+        self.assertGreater(len(body), 0)
+        first = body[0]
+        self.assertIn("customer_id", first)
+        self.assertIn("abuse_probability", first)
+        self.assertIn("predicted_label", first)
+        self.assertIn("cluster_size", first)
+        self.assertIn("unique_connected_customers", first)
+        self.assertIn("created_at", first)
+
 
 if __name__ == "__main__":
     unittest.main()

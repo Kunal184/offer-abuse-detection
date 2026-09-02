@@ -10,6 +10,7 @@ from typing import Any
 
 import pandas as pd
 from fastapi import FastAPI, HTTPException
+from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -316,7 +317,7 @@ def get_scored_customers():
     merged["cluster_size"] = merged["cluster_size"].fillna(1).astype(int)
     merged["unique_connected_customers"] = merged["unique_connected_customers"].fillna(0).astype(int)
 
-    return JSONResponse(merged.to_dict(orient="records"))
+    return JSONResponse(jsonable_encoder(merged.to_dict(orient="records")))
 
 
 # ── Graph / cluster endpoints ────────────────────────────────────────────────
