@@ -1,10 +1,10 @@
-"""Minimal HTTP boundary around the frozen ML inference function."""
+"""Minimal HTTP boundary around the frozen ML inference function and dataset serving."""
 
 from __future__ import annotations
 
 import json
-import os
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
+from features.ingestion import load_raw_dataset, validate_and_clean_table
 from ml.inference import score_customer
 
 
@@ -74,51 +75,53 @@ app.add_middleware(
 )
 
 
-from functools import lru_cache
-
 # ── Cache Helpers ────────────────────────────────────────────────────────────
 
 @lru_cache(maxsize=1)
-def _get_model():
+def _get_model() -> Any:
     import joblib
     return joblib.load(OUTPUTS_DIR / "model_xgboost_groupaware.joblib")
 
 
+@lru_cache(maxsize=1)
+def _load_all_data_cached() -> dict[str, pd.DataFrame]:
+    dataset, _ = load_raw_dataset(DATA_DIR)
+    return dataset
+
+
+def _load_all_data() -> dict[str, pd.DataFrame]:
+    return _load_all_data_cached()
+
+
 def _records(filename: str) -> list[dict]:
+    table_name = filename.replace(".csv", "")
+    dataset = _load_all_data()
+    if table_name in dataset and not dataset[table_name].empty:
+        return dataset[table_name].to_dict(orient="records")
+
     path = DATA_DIR / filename
     if not path.exists():
         raise HTTPException(status_code=404, detail=f"Data file not found: {filename}")
-    return pd.read_csv(path).to_dict(orient="records")
-
-
-@lru_cache(maxsize=1)
-def _load_all_data_cached() -> dict[str, list[dict]]:
-    return {
-        "customers": _records("customers.csv"),
-        "orders": _records("orders.csv"),
-        "offer_redemptions": _records("offer_redemptions.csv"),
-        "customer_devices": _records("customer_devices.csv"),
-        "customer_addresses": _records("customer_addresses.csv"),
-        "customer_payments": _records("customer_payments.csv"),
-        "customer_ips": _records("customer_ips.csv"),
-    }
-
-
-def _load_all_data() -> dict[str, list[dict]]:
-    return _load_all_data_cached()
+    df = pd.read_csv(path)
+    clean_df, _ = validate_and_clean_table(df, table_name)
+    return clean_df.to_dict(orient="records")
 
 
 @lru_cache(maxsize=1)
 def _compute_as_of() -> str:
     """Return the max timestamp across all source tables as ISO string."""
     all_data = _load_all_data()
-    timestamps = [
-        pd.to_datetime(r["created_at"]) for r in all_data["customers"]
-    ]
-    timestamps += [pd.to_datetime(r["timestamp"]) for r in all_data["orders"]]
-    timestamps += [pd.to_datetime(r["timestamp"]) for r in all_data["offer_redemptions"]]
-    return pd.to_datetime(timestamps).max().isoformat()
+    timestamps = []
+    if "customers" in all_data and not all_data["customers"].empty:
+        timestamps.extend(all_data["customers"]["created_at"].dropna().tolist())
+    if "orders" in all_data and not all_data["orders"].empty:
+        timestamps.extend(all_data["orders"]["timestamp"].dropna().tolist())
+    if "offer_redemptions" in all_data and not all_data["offer_redemptions"].empty:
+        timestamps.extend(all_data["offer_redemptions"]["timestamp"].dropna().tolist())
 
+    if not timestamps:
+        return datetime.now(timezone.utc).isoformat()
+    return pd.to_datetime(timestamps).max().isoformat()
 
 
 # ── Core prediction endpoint ────────────────────────────────────────────────
@@ -131,21 +134,11 @@ def predict(request: PredictionRequest) -> PredictionResponse:
             customer_id=request.customer_id,
             customers=pd.DataFrame([row.model_dump() for row in request.customers]),
             orders=pd.DataFrame([row.model_dump() for row in request.orders]),
-            offer_redemptions=pd.DataFrame(
-                [row.model_dump() for row in request.offer_redemptions]
-            ),
-            customer_devices=pd.DataFrame(
-                [row.model_dump() for row in request.customer_devices]
-            ),
-            customer_addresses=pd.DataFrame(
-                [row.model_dump() for row in request.customer_addresses]
-            ),
-            customer_payments=pd.DataFrame(
-                [row.model_dump() for row in request.customer_payments]
-            ),
-            customer_ips=pd.DataFrame(
-                [row.model_dump() for row in request.customer_ips]
-            ),
+            offer_redemptions=pd.DataFrame([row.model_dump() for row in request.offer_redemptions]),
+            customer_devices=pd.DataFrame([row.model_dump() for row in request.customer_devices]),
+            customer_addresses=pd.DataFrame([row.model_dump() for row in request.customer_addresses]),
+            customer_payments=pd.DataFrame([row.model_dump() for row in request.customer_payments]),
+            customer_ips=pd.DataFrame([row.model_dump() for row in request.customer_ips]),
             as_of=request.as_of,
         )
     except FileNotFoundError as exc:
@@ -170,13 +163,13 @@ def predict_batch(request: BatchPredictionRequest) -> BatchPredictionResponse:
         try:
             result = score_customer(
                 customer_id=cid,
-                customers=pd.DataFrame(all_data["customers"]),
-                orders=pd.DataFrame(all_data["orders"]),
-                offer_redemptions=pd.DataFrame(all_data["offer_redemptions"]),
-                customer_devices=pd.DataFrame(all_data["customer_devices"]),
-                customer_addresses=pd.DataFrame(all_data["customer_addresses"]),
-                customer_payments=pd.DataFrame(all_data["customer_payments"]),
-                customer_ips=pd.DataFrame(all_data["customer_ips"]),
+                customers=all_data["customers"],
+                orders=all_data["orders"],
+                offer_redemptions=all_data["offer_redemptions"],
+                customer_devices=all_data["customer_devices"],
+                customer_addresses=all_data["customer_addresses"],
+                customer_payments=all_data["customer_payments"],
+                customer_ips=all_data["customer_ips"],
                 as_of=as_of_ts,
             )
             predictions.append(PredictionResponse.model_validate(result))
@@ -251,7 +244,6 @@ def get_overview():
     gt_df["is_abuse"] = gt_df["abuse_group_id"].notna().astype(int)
     abuse_groups = gt_df[gt_df["is_abuse"] == 1]["abuse_group_id"].value_counts()
 
-    # Use cached model
     model = _get_model()
     FEATURE_COLS = [
         "account_age_days", "order_count", "total_spend", "average_spend",
@@ -269,7 +261,6 @@ def get_overview():
     medium = int(np.sum((probabilities >= 0.3) & (probabilities < 0.7)))
     clear = int(np.sum(probabilities < 0.3))
 
-    # Exposure from pre-computed total_spend
     flagged_mask = probabilities >= 0.5
     exposure = float(features.loc[flagged_mask, "total_spend"].sum())
 
@@ -293,15 +284,11 @@ def get_overview():
 
 @app.get("/v1/data/scored-customers")
 def get_scored_customers():
-    """Return all customers joined with their pre-computed ML abuse scores.
-
-    Uses the frozen model to score all customers at once in one vectorised
-    call — safe and fast.  The frontend must use this instead of sending
-    1000 individual /v1/predictions requests.
-    """
+    """Return all customers joined with their pre-computed ML abuse scores."""
     import numpy as np
 
-    customers_df = pd.read_csv(DATA_DIR / "customers.csv")
+    all_data = _load_all_data()
+    customers_df = all_data["customers"]
     features = pd.read_csv(DATA_DIR / "customer_features.csv")
 
     model = _get_model()
@@ -344,19 +331,19 @@ def get_graph():
     links = []
     for node, attrs in G.nodes(data=True):
         node_type = attrs.get("node_type", "unknown")
-        label = node
+        label = str(node)
         if node_type == "customer":
-            label = node[2:]
+            label = str(node)[2:]
         elif node_type == "device":
-            label = f"Device {node[7:15]}"
+            label = f"Device {str(node)[7:15]}"
         elif node_type == "address":
-            label = f"Addr {node[8:16]}"
+            label = f"Addr {str(node)[8:16]}"
         elif node_type == "payment":
-            label = f"Pay {node[8:16]}"
+            label = f"Pay {str(node)[8:16]}"
         elif node_type == "ip":
-            label = node[3:]
+            label = str(node)[3:]
         nodes.append({
-            "id": node,
+            "id": str(node),
             "type": node_type,
             "label": label[:20],
         })
@@ -365,8 +352,8 @@ def get_graph():
         u_type = G.nodes[u].get("node_type", "unknown")
         v_type = G.nodes[v].get("node_type", "unknown")
         links.append({
-            "source": u,
-            "target": v,
+            "source": str(u),
+            "target": str(v),
             "sourceType": u_type,
             "targetType": v_type,
         })
@@ -382,9 +369,7 @@ def get_clusters():
     all_data = _load_all_data()
     G = _build_graph(all_data)
     features = pd.read_csv(DATA_DIR / "customer_features.csv")
-    as_of = _compute_as_of()
 
-    # Load model and score all customers at once
     model = _get_model()
     FEATURE_COLS = [
         "account_age_days", "order_count", "total_spend", "average_spend",
@@ -395,31 +380,28 @@ def get_clusters():
     ]
     X = features[FEATURE_COLS].to_numpy()
     probabilities = model.predict_proba(X)[:, 1]
+    features = features.copy()
     features["abuse_probability"] = probabilities
     features["predicted_label"] = (probabilities >= 0.5).astype(int)
 
-    # Get all flagged customer IDs
     flagged_ids = set(features[features["predicted_label"] == 1]["customer_id"].tolist())
 
-    # Build connected components, label flagged clusters
     components = list(_connected_components(G))
     clusters = []
     for i, comp in enumerate(components):
         customer_nodes = [n for n in comp if str(n).startswith("c_")]
         entity_nodes = [n for n in comp if not str(n).startswith("c_")]
-        customer_ids = [n[2:] for n in customer_nodes]
+        customer_ids = [str(n)[2:] for n in customer_nodes]
         flagged_in_cluster = [c for c in customer_ids if c in flagged_ids]
 
         if len(customer_ids) <= 1:
             continue
 
-        # Determine entity types
         device_count = len([n for n in entity_nodes if str(n).startswith("device_")])
         addr_count = len([n for n in entity_nodes if str(n).startswith("address_")])
         pay_count = len([n for n in entity_nodes if str(n).startswith("payment_")])
         ip_count = len([n for n in entity_nodes if str(n).startswith("ip_")])
 
-        # Overall risk
         flagged_ratio = len(flagged_in_cluster) / len(customer_ids)
         overall_risk = "high" if flagged_ratio > 0.5 else "medium" if flagged_ratio > 0 else "clear"
 
@@ -438,7 +420,6 @@ def get_clusters():
             "entities": entity_nodes,
         })
 
-    # Sort by flagged ratio
     clusters.sort(key=lambda c: c["flaggedCustomerCount"] / max(c["customerCount"], 1), reverse=True)
     return JSONResponse({"clusters": clusters})
 
@@ -501,24 +482,40 @@ def health():
 
 # ── Internal helpers ────────────────────────────────────────────────────────
 
-def _build_graph(all_data: dict) -> Any:
+def _build_graph(all_data: dict[str, pd.DataFrame]) -> Any:
     """Build the bipartite entity graph."""
     import networkx as nx
     G = nx.Graph()
-    for row in all_data["customers"]:
-        G.add_node(f"c_{row['customer_id']}", node_type="customer")
-    for row in all_data["customer_devices"]:
-        G.add_node(f"device_{row['device_id']}", node_type="device")
-        G.add_edge(f"c_{row['customer_id']}", f"device_{row['device_id']}")
-    for row in all_data["customer_addresses"]:
-        G.add_node(f"address_{row['address_id']}", node_type="address")
-        G.add_edge(f"c_{row['customer_id']}", f"address_{row['address_id']}")
-    for row in all_data["customer_payments"]:
-        G.add_node(f"payment_{row['payment_id']}", node_type="payment")
-        G.add_edge(f"c_{row['customer_id']}", f"payment_{row['payment_id']}")
-    for row in all_data["customer_ips"]:
-        G.add_node(f"ip_{row['ip_address']}", node_type="ip")
-        G.add_edge(f"c_{row['customer_id']}", f"ip_{row['ip_address']}")
+
+    cust_df = all_data.get("customers", pd.DataFrame())
+    if not cust_df.empty:
+        for cid in cust_df["customer_id"]:
+            G.add_node(f"c_{cid}", node_type="customer")
+
+    dev_df = all_data.get("customer_devices", pd.DataFrame())
+    if not dev_df.empty:
+        for _, row in dev_df.iterrows():
+            G.add_node(f"device_{row['device_id']}", node_type="device")
+            G.add_edge(f"c_{row['customer_id']}", f"device_{row['device_id']}")
+
+    addr_df = all_data.get("customer_addresses", pd.DataFrame())
+    if not addr_df.empty:
+        for _, row in addr_df.iterrows():
+            G.add_node(f"address_{row['address_id']}", node_type="address")
+            G.add_edge(f"c_{row['customer_id']}", f"address_{row['address_id']}")
+
+    pay_df = all_data.get("customer_payments", pd.DataFrame())
+    if not pay_df.empty:
+        for _, row in pay_df.iterrows():
+            G.add_node(f"payment_{row['payment_id']}", node_type="payment")
+            G.add_edge(f"c_{row['customer_id']}", f"payment_{row['payment_id']}")
+
+    ip_df = all_data.get("customer_ips", pd.DataFrame())
+    if not ip_df.empty:
+        for _, row in ip_df.iterrows():
+            G.add_node(f"ip_{row['ip_address']}", node_type="ip")
+            G.add_edge(f"c_{row['customer_id']}", f"ip_{row['ip_address']}")
+
     return G
 
 
