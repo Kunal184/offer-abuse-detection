@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { loadClusters, loadGraph } from '../api/client';
 import { useAppStore } from '../store/appStore';
 
@@ -6,6 +6,7 @@ export default function AbuseClustersPage() {
   const clusters = useAppStore((s) => s.clusters);
   const setClusters = useAppStore((s) => s.setClusters);
   const graphNodes = useAppStore((s) => s.graphNodes);
+  const graphLinks = useAppStore((s) => s.graphLinks);
   const setGraph = useAppStore((s) => s.setGraph);
   const selectedCluster = useAppStore((s) => s.selectedCluster);
   const setSelectedCluster = useAppStore((s) => s.setSelectedCluster);
@@ -109,8 +110,11 @@ export default function AbuseClustersPage() {
                 // Key the graph on nodes length so it never remounts due to empty → loaded transitions
                 <RelationshipGraph
                   key={`graph-${graphNodes.length}`}
-                  nodes={graphNodes.slice(0, 40)}
+                  nodes={graphNodes}
+                  links={graphLinks}
                   clusters={clusters}
+                  selectedCluster={selectedCluster}
+                  onSelectCluster={setSelectedCluster}
                 />
               )}
             </div>
@@ -223,75 +227,229 @@ export default function AbuseClustersPage() {
 
 /* ─── Relationship graph component ─────────────────────────── */
 
-function RelationshipGraph({ nodes, clusters }: { nodes: any[]; clusters: any[] }) {
+function RelationshipGraph({
+  nodes,
+  links,
+  clusters,
+  selectedCluster,
+  onSelectCluster,
+}: {
+  nodes: any[];
+  links: any[];
+  clusters: any[];
+  selectedCluster: any;
+  onSelectCluster: (c: any) => void;
+}) {
   const [hovered, setHovered] = useState<string | null>(null);
 
-  // Build a simple layout: customers in center ring, entities around
-  const customers = nodes.filter((n) => n.type === 'customer');
-  const entities = nodes.filter((n) => n.type !== 'customer');
-  const flaggedIds = new Set<string>();
-  clusters.forEach((c) => {
-    if (c.overallRisk === 'high') {
-      c.customers.forEach((id: string) => flaggedIds.add(`c_${id}`));
-    }
-  });
+  // If a cluster is selected, highlight its nodes & edges
+  const activeClusterNodeIds = useMemo(() => {
+    if (!selectedCluster) return null;
+    const ids = new Set<string>();
+    selectedCluster.customers.forEach((c: string) => ids.add(`c_${c}`));
+    selectedCluster.entities.forEach((e: string) => ids.add(e));
+    return ids;
+  }, [selectedCluster]);
 
-  // Position customers in inner circle
-  const positions: Record<string, { x: number; y: number }> = {};
-  const cx = 200, cy = 200;
-  const innerR = 60, outerR = 150;
+  const flaggedIds = useMemo(() => {
+    const set = new Set<string>();
+    clusters.forEach((c) => {
+      if (c.overallRisk === 'high') {
+        c.customers.forEach((id: string) => set.add(`c_${id}`));
+      }
+    });
+    return set;
+  }, [clusters]);
 
-  customers.forEach((n, i) => {
-    const angle = (i / Math.max(customers.length, 1)) * 2 * Math.PI - Math.PI / 2;
-    const r = innerR + (i % 3) * 20;
-    positions[n.id] = { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r };
-  });
+  // Layout: customers in inner circle, entities in outer circle
+  const displayNodes = useMemo(() => nodes.slice(0, 45), [nodes]);
+  const displayNodeIds = useMemo(() => new Set(displayNodes.map((n) => n.id)), [displayNodes]);
 
-  entities.forEach((n, i) => {
-    const angle = (i / Math.max(entities.length, 1)) * 2 * Math.PI - Math.PI / 2;
-    positions[n.id] = { x: cx + Math.cos(angle) * outerR, y: cy + Math.sin(angle) * outerR };
-  });
+  const customers = useMemo(() => displayNodes.filter((n) => n.type === 'customer'), [displayNodes]);
+  const entities = useMemo(() => displayNodes.filter((n) => n.type !== 'customer'), [displayNodes]);
+
+  const positions = useMemo(() => {
+    const pos: Record<string, { x: number; y: number }> = {};
+    const cx = 200, cy = 200;
+    const innerR = 75, outerR = 145;
+
+    customers.forEach((n, i) => {
+      const angle = (i / Math.max(customers.length, 1)) * 2 * Math.PI - Math.PI / 2;
+      pos[n.id] = { x: cx + Math.cos(angle) * innerR, y: cy + Math.sin(angle) * innerR };
+    });
+
+    entities.forEach((n, i) => {
+      const angle = (i / Math.max(entities.length, 1)) * 2 * Math.PI - Math.PI / 2;
+      pos[n.id] = { x: cx + Math.cos(angle) * outerR, y: cy + Math.sin(angle) * outerR };
+    });
+
+    return pos;
+  }, [customers, entities]);
+
+  // Filter links connecting displayed nodes
+  const displayLinks = useMemo(() => {
+    return links.filter(
+      (l) => displayNodeIds.has(l.source) && displayNodeIds.has(l.target)
+    ).slice(0, 60);
+  }, [links, displayNodeIds]);
+
+  const hoveredNode = displayNodes.find((n) => n.id === hovered);
 
   return (
-    <svg viewBox="0 0 400 400" width="100%" height="100%" style={{ background: '#0A0A0A' }}>
-      {/* Nodes */}
-      {nodes.slice(0, 40).map((n) => {
-        const pos = positions[n.id] || { x: 200, y: 200 };
-        const isCustomer = n.type === 'customer';
-        const isFlagged = flaggedIds.has(n.id);
-        const isHovered = hovered === n.id;
-        const isConnected = hovered && (nodes.find((x) => x.id === hovered)?.type === n.type);
-        const opacity = hovered && !isConnected && n.id !== hovered ? 0.25 : 1;
+    <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <svg viewBox="0 0 400 400" width="100%" height="100%" style={{ background: '#0A0A0A' }}>
+        {/* Render Connecting Edges */}
+        {displayLinks.map((l, i) => {
+          const p1 = positions[l.source];
+          const p2 = positions[l.target];
+          if (!p1 || !p2) return null;
 
-        const nodeColor = isFlagged ? '#D9391F' : isCustomer ? '#FAFAF8' : '#9BA3AB';
-        const nodeRadius = isCustomer ? (isHovered ? 10 : 8) : (isHovered ? 7 : 5);
-        const pulse = isFlagged ? 'pulse-cluster' : undefined;
+          const isHoveredEdge = hovered && (l.source === hovered || l.target === hovered);
+          const isClusterEdge =
+            activeClusterNodeIds && activeClusterNodeIds.has(l.source) && activeClusterNodeIds.has(l.target);
 
-        return (
-          <g
-            key={n.id}
-            opacity={opacity}
-            onMouseEnter={() => setHovered(n.id)}
-            onMouseLeave={() => setHovered(null)}
-            style={{ cursor: 'pointer', transition: 'opacity 200ms ease' }}
-            className={pulse}
-          >
-            {isCustomer ? (
-              <circle cx={pos.x} cy={pos.y} r={nodeRadius} fill={nodeColor} />
-            ) : (
-              <rect x={pos.x - nodeRadius} y={pos.y - nodeRadius} width={nodeRadius * 2} height={nodeRadius * 2} rx={2} fill={nodeColor} />
-            )}
-            {isFlagged && (
-              <circle cx={pos.x} cy={pos.y} r={nodeRadius + 4} fill="none" stroke="#D9391F" strokeWidth={1} opacity={0.5} className="pulse-cluster" />
-            )}
-          </g>
-        );
-      })}
+          const stroke = isHoveredEdge || isClusterEdge ? '#D9391F' : '#282826';
+          const strokeWidth = isHoveredEdge || isClusterEdge ? 1.8 : 0.8;
+          const opacity = hovered || activeClusterNodeIds ? (isHoveredEdge || isClusterEdge ? 1 : 0.15) : 0.4;
 
-      {/* Labels */}
-      <text x={200} y={20} textAnchor="middle" fontSize="9" fill="#5E5E5C" fontFamily="JetBrains Mono">
-        CUSTOMERS → SHARED ENTITIES → OTHER CUSTOMERS
-      </text>
-    </svg>
+          return (
+            <line
+              key={`link-${i}`}
+              x1={p1.x}
+              y1={p1.y}
+              x2={p2.x}
+              y2={p2.y}
+              stroke={stroke}
+              strokeWidth={strokeWidth}
+              strokeOpacity={opacity}
+              style={{ transition: 'all 200ms ease' }}
+            />
+          );
+        })}
+
+        {/* Render Nodes */}
+        {displayNodes.map((n) => {
+          const pos = positions[n.id] || { x: 200, y: 200 };
+          const isCustomer = n.type === 'customer';
+          const isFlagged = flaggedIds.has(n.id);
+          const isHovered = hovered === n.id;
+          const isSelected = activeClusterNodeIds?.has(n.id);
+
+          let opacity = 1;
+          if (hovered) {
+            const isConnected = displayLinks.some(
+              (l) => (l.source === hovered && l.target === n.id) || (l.target === hovered && l.source === n.id)
+            );
+            opacity = isHovered || isConnected ? 1 : 0.2;
+          } else if (activeClusterNodeIds) {
+            opacity = isSelected ? 1 : 0.25;
+          }
+
+          const nodeColor = isFlagged
+            ? '#D9391F'
+            : isCustomer
+            ? '#FAFAF8'
+            : n.type === 'device'
+            ? '#EF9F27'
+            : n.type === 'payment'
+            ? '#1D9E75'
+            : '#9BA3AB';
+
+          const nodeRadius = isCustomer ? (isHovered ? 9 : 7) : (isHovered ? 7 : 5);
+
+          return (
+            <g
+              key={n.id}
+              opacity={opacity}
+              onMouseEnter={() => setHovered(n.id)}
+              onMouseLeave={() => setHovered(null)}
+              onClick={() => {
+                const foundCluster = clusters.find((c) =>
+                  c.customers.some((cid: string) => `c_${cid}` === n.id) || c.entities.includes(n.id)
+                );
+                if (foundCluster) onSelectCluster(foundCluster);
+              }}
+              style={{ cursor: 'pointer', transition: 'opacity 200ms ease' }}
+            >
+              {isCustomer ? (
+                <circle cx={pos.x} cy={pos.y} r={nodeRadius} fill={nodeColor} />
+              ) : (
+                <rect
+                  x={pos.x - nodeRadius}
+                  y={pos.y - nodeRadius}
+                  width={nodeRadius * 2}
+                  height={nodeRadius * 2}
+                  rx={2}
+                  fill={nodeColor}
+                />
+              )}
+              {(isFlagged || isSelected) && (
+                <circle
+                  cx={pos.x}
+                  cy={pos.y}
+                  r={nodeRadius + 4}
+                  fill="none"
+                  stroke="#D9391F"
+                  strokeWidth={1.2}
+                  opacity={0.7}
+                  className={isFlagged ? 'pulse-cluster' : undefined}
+                />
+              )}
+            </g>
+          );
+        })}
+
+        {/* Legend */}
+        <g transform="translate(12, 375)">
+          <circle cx={4} cy={0} r={4} fill="#FAFAF8" />
+          <text x={12} y={3} fontSize="8" fill="#8A8A88" fontFamily="JetBrains Mono">
+            CUSTOMER
+          </text>
+
+          <circle cx={70} cy={0} r={4} fill="#D9391F" />
+          <text x={78} y={3} fontSize="8" fill="#8A8A88" fontFamily="JetBrains Mono">
+            FLAGGED
+          </text>
+
+          <rect x={126} y={-4} width={8} height={8} rx={1} fill="#EF9F27" />
+          <text x={138} y={3} fontSize="8" fill="#8A8A88" fontFamily="JetBrains Mono">
+            DEVICE
+          </text>
+
+          <rect x={184} y={-4} width={8} height={8} rx={1} fill="#1D9E75" />
+          <text x={196} y={3} fontSize="8" fill="#8A8A88" fontFamily="JetBrains Mono">
+            PAYMENT
+          </text>
+        </g>
+      </svg>
+
+      {/* Hover Tooltip Overlay */}
+      {hoveredNode && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 35,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: '#1A1A1A',
+            border: '1px solid #2E2E2C',
+            borderRadius: 6,
+            padding: '6px 12px',
+            pointerEvents: 'none',
+            fontSize: 11,
+            color: '#FAFAF8',
+            fontFamily: 'JetBrains Mono, monospace',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+            whiteSpace: 'nowrap',
+            zIndex: 10,
+          }}
+        >
+          <span style={{ color: hoveredNode.type === 'customer' ? '#FAFAF8' : '#9BA3AB', textTransform: 'uppercase', marginRight: 6 }}>
+            [{hoveredNode.type}]
+          </span>
+          {hoveredNode.label}
+        </div>
+      )}
+    </div>
   );
 }
