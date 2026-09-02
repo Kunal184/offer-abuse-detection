@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import { loadClusters, loadGraph } from '../api/client';
 import { useAppStore } from '../store/appStore';
+import './AbuseClusters.css';
 
 export default function AbuseClustersPage() {
   const clusters = useAppStore((s) => s.clusters);
@@ -60,27 +61,28 @@ export default function AbuseClustersPage() {
   const isLoadingAnything = loadingClusters || loadingGraph;
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
+    <div className="clusters-container">
+      <div className="clusters-header">
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Abuse Clusters</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Coordinated abuse networks</p>
+          <h1 className="clusters-title">ABUSE CLUSTER INVESTIGATION</h1>
+          <p className="clusters-subtitle">COORDINATED NETWORK GRAPH & ENTITY RECONSTRUCTION</p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <span className="badge badge-high">{clusters.length} clusters</span>
-          <span className="badge badge-high">{totalFlagged} flagged</span>
-          <span className="badge badge-neutral">{totalShared} shared entities</span>
+        <div className="badge-tape-group">
+          <span className="badge-tape-high">{clusters.length} CLUSTERS</span>
+          <span className="badge-tape-high">{totalFlagged} FLAGGED ACCOUNTS</span>
+          <span className="badge-tape-medium">{totalShared} SHARED ENTITIES</span>
         </div>
       </div>
 
       {/* Verdict finding strip */}
-      <div className="verdict-card" style={{ marginBottom: 28 }}>
-        <div className="verdict-card-label">COORDINATED ABUSE DETECTED</div>
-        <div className="verdict-card-statement">
-          {isLoadingAnything ? '—' : `${clusters.length} CLUSTERS · ${totalFlagged} FLAGGED ACCOUNTS`}
+      <div className="clusters-verdict-card">
+        <div className="clusters-verdict-badge">GRAPH ENGINE ACTIVE</div>
+        <div className="clusters-verdict-label">COORDINATED ABUSE DETECTED</div>
+        <div className="clusters-verdict-statement">
+          {isLoadingAnything ? '—' : `${clusters.length} CLUSTERS DETECTED · ${totalFlagged} FLAGGED ACCOUNTS`}
         </div>
-        <div className="verdict-card-meta">
-          {totalCustomers} customers · {totalShared} shared entities · graph-based detection
+        <div className="clusters-verdict-meta">
+          {totalCustomers} CUSTOMERS · {totalShared} SHARED ENTITIES · REAL-TIME GRAPH ENGINE
         </div>
       </div>
 
