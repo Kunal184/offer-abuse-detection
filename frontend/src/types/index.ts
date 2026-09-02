@@ -59,7 +59,20 @@ export interface OfferRaw {
   max_discount: number;
 }
 
-/* ─── Prediction response ───────────────────────────────────── */
+export interface ShapContributor {
+  feature_name: string;
+  feature_value: number;
+  shap_value: number;
+  direction: string;
+  impact: string;
+}
+
+export interface ShapExplanation {
+  base_value: number;
+  top_positive_contributors: ShapContributor[];
+  top_negative_contributors: ShapContributor[];
+  all_contributions: ShapContributor[];
+}
 
 export interface PredictionResponse {
   customer_id: string;
@@ -72,6 +85,7 @@ export interface PredictionResponse {
   graph_signals: Record<string, number>;
   as_of: string;
   scored_at: string;
+  explanation?: ShapExplanation | null;
 }
 
 /* ─── Feature row (16 columns) ──────────────────────────────── */

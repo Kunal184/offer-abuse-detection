@@ -160,6 +160,10 @@ export async function scoreCustomers(customerIds: string[], asOf: string): Promi
   return res.predictions;
 }
 
+export async function loadCustomerPrediction(customerId: string, explain = true): Promise<PredictionResponse> {
+  return apiGet<PredictionResponse>(`/v1/predictions/${customerId}?explain=${explain}`);
+}
+
 /* ─── Overview ────────────────────────────────────────────────── */
 
 export async function loadOverview(): Promise<OverviewStats> {

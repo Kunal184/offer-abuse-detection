@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore, getRiskLevel } from '../store/appStore';
-import { loadAllData, scoreCustomer } from '../api/client';
+import { loadAllData, loadCustomerPrediction, scoreCustomer } from '../api/client';
 import RiskBadge from '../components/shared/RiskBadge';
 import VerdictCard, { AnimatedNumber } from '../components/shared/VerdictCard';
 import type {
@@ -122,8 +122,8 @@ export default function CustomerDetailPage() {
 
     setGraphData({ nodes, links });
 
-    // Score customer
-    scoreCustomer(id, demoData)
+    // Fetch live prediction + SHAP explanation from backend GET /v1/predictions/{id}?explain=true
+    loadCustomerPrediction(id, true)
       .then((p) => {
         setPrediction(p);
         setSelectedCustomer({
@@ -142,14 +142,16 @@ export default function CustomerDetailPage() {
           prediction: p,
         });
       })
-      .catch((e) => setError(e.message))
+      .catch(() => {
+        scoreCustomer(id, demoData).then((p) => setPrediction(p));
+      })
       .finally(() => setLoading(false));
   }, [id, demoData]);
 
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
-        <div style={{ color: 'var(--text-muted)', fontSize: 12, fontFamily: 'var(--font-mono)' }}>SCORING CUSTOMER...</div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 12, fontFamily: 'var(--font-mono)' }}>SCORING CUSTOMER & GENERATING SHAP EXPLANATION...</div>
       </div>
     );
   }
@@ -202,9 +204,79 @@ export default function CustomerDetailPage() {
           }
           statement={riskStatement}
           label="ABUSE PROBABILITY"
-          meta={prediction ? `Model: ${prediction.model_name} · Version: ${prediction.model_version}` : ''}
+          meta={prediction ? `Model: ${prediction.model_name} · Threshold: ${prediction.decision_threshold} · Label: ${prediction.predicted_label} (${prediction.predicted_label === 1 ? 'FLAGGED' : 'CLEAR'}) · Version: ${prediction.model_version}` : ''}
         />
       </div>
+
+      {/* SHAP ML Explanation */}
+      {prediction?.explanation && (
+        <div className="card" style={{ marginBottom: 24 }}>
+          <div className="card-body">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
+              <h2>Tree SHAP ML Explanation</h2>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                Base Value: {prediction.explanation.base_value.toFixed(4)} log-odds
+              </span>
+            </div>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 16 }}>
+              Feature attribution computed from the frozen XGBoost model using Tree SHAP marginal contributions.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+              {/* Positive Risk Contributors */}
+              <div style={{ background: 'var(--bg-page)', borderRadius: 6, padding: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#D9391F', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>▲ Risk Increasing Contributors (Positive SHAP)</span>
+                </div>
+                {prediction.explanation.top_positive_contributors.length === 0 ? (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>No positive risk factors</div>
+                ) : (
+                  prediction.explanation.top_positive_contributors.map((c: any) => (
+                    <div key={c.feature_name} style={{ marginBottom: 10, fontSize: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {SIGNAL_LABELS[c.feature_name]?.label || c.feature_name}
+                        </span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#D9391F' }}>
+                          +{c.shap_value.toFixed(4)}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                        Value: <span className="mono">{c.feature_value}</span> · {c.impact}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Negative Risk Contributors */}
+              <div style={{ background: 'var(--bg-page)', borderRadius: 6, padding: 14 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: '#2E7D32', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span>▼ Risk Decreasing Contributors (Negative SHAP)</span>
+                </div>
+                {prediction.explanation.top_negative_contributors.length === 0 ? (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>No negative risk factors</div>
+                ) : (
+                  prediction.explanation.top_negative_contributors.map((c: any) => (
+                    <div key={c.feature_name} style={{ marginBottom: 10, fontSize: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                        <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {SIGNAL_LABELS[c.feature_name]?.label || c.feature_name}
+                        </span>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#2E7D32' }}>
+                          {c.shap_value.toFixed(4)}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                        Value: <span className="mono">{c.feature_value}</span> · {c.impact}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Why flagged - feature signals */}
       {prediction && (
@@ -255,34 +327,33 @@ export default function CustomerDetailPage() {
         <div>
           <div className="card" style={{ marginBottom: 16 }}>
             <div className="card-body">
-              <h3 className="section-label">RISK CONTEXT</h3>
+              <h3 className="section-label">RELATIONSHIP EVIDENCE</h3>
               {prediction && (
                 <>
                   <div style={{ marginTop: 8 }}>
-                    <div className="metric-row">
-                      <span className="metric-name">Shared entities</span>
-                      <span className="metric-value mono">{
-                        (prediction.feature_snapshot.max_device_user_count || 0) +
-                        (prediction.feature_snapshot.max_address_user_count || 0) +
-                        (prediction.feature_snapshot.max_payment_user_count || 0) +
-                        (prediction.feature_snapshot.max_ip_user_count || 0)
-                      }</span>
-                    </div>
                     <div className="metric-row">
                       <span className="metric-name">Connected customers</span>
                       <span className="metric-value mono">{prediction.feature_snapshot.unique_connected_customers || 0}</span>
                     </div>
                     <div className="metric-row">
+                      <span className="metric-name">Shared devices</span>
+                      <span className="metric-value mono">{prediction.feature_snapshot.max_device_user_count || 0}</span>
+                    </div>
+                    <div className="metric-row">
+                      <span className="metric-name">Shared addresses</span>
+                      <span className="metric-value mono">{prediction.feature_snapshot.max_address_user_count || 0}</span>
+                    </div>
+                    <div className="metric-row">
+                      <span className="metric-name">Shared payments</span>
+                      <span className="metric-value mono">{prediction.feature_snapshot.max_payment_user_count || 0}</span>
+                    </div>
+                    <div className="metric-row">
+                      <span className="metric-name">Shared IPs</span>
+                      <span className="metric-value mono">{prediction.feature_snapshot.max_ip_user_count || 0}</span>
+                    </div>
+                    <div className="metric-row">
                       <span className="metric-name">Cluster size</span>
                       <span className="metric-value mono">{prediction.feature_snapshot.cluster_size || 0}</span>
-                    </div>
-                    <div className="metric-row">
-                      <span className="metric-name">Order count</span>
-                      <span className="metric-value mono">{prediction.feature_snapshot.order_count || 0}</span>
-                    </div>
-                    <div className="metric-row">
-                      <span className="metric-name">Redemption count</span>
-                      <span className="metric-value mono">{prediction.feature_snapshot.redemption_count || 0}</span>
                     </div>
                   </div>
                 </>
