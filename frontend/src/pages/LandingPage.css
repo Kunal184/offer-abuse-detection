@@ -1,0 +1,147 @@
+@import url('https://fonts.googleapis.com/css2?family=League+Gothic&family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap');
+
+/* Landing Page Viewport 1 Styling */
+.landing-viewport {
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background-color: #f4f3ee;
+  color: #e5341c;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 2.5rem 3.5rem;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9999;
+}
+
+.landing-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.landing-logo {
+  font-family: 'League Gothic', 'Bebas Neue', sans-serif;
+  font-size: 3rem;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: #e5341c;
+}
+
+.landing-action {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #e5341c;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  transition: opacity 0.2s ease;
+}
+
+.landing-action:hover {
+  opacity: 0.7;
+}
+
+.landing-action .arrow {
+  display: inline-block;
+  transition: transform 0.2s ease;
+}
+
+.landing-action:hover .arrow {
+  transform: translateX(4px);
+}
+
+.landing-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  margin-top: -1.5rem;
+}
+
+.landing-title {
+  font-family: 'League Gothic', 'Bebas Neue', sans-serif;
+  font-size: clamp(5.5rem, 14vw, 19rem);
+  font-weight: 400;
+  line-height: 0.82;
+  text-transform: uppercase;
+  color: #e5341c;
+  letter-spacing: -0.01em;
+  margin: 0;
+  padding: 0;
+  white-space: nowrap;
+  user-select: none;
+  width: 100%;
+}
+
+.landing-title-line {
+  display: block;
+}
+
+.landing-subtext {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: clamp(0.95rem, 1.4vw, 1.35rem);
+  font-weight: 600;
+  color: #e5341c;
+  margin-top: 2rem;
+  letter-spacing: -0.01em;
+}
+
+.landing-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  width: 100%;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #e5341c;
+}
+
+.landing-meta-left {
+  max-width: 70%;
+}
+
+.landing-meta-right {
+  text-align: right;
+}
+
+@media (max-width: 768px) {
+  .landing-viewport {
+    padding: 1.5rem 1.5rem;
+  }
+  .landing-title {
+    font-size: clamp(3.5rem, 16vw, 7rem);
+    line-height: 0.85;
+  }
+  .landing-subtext {
+    margin-top: 1.25rem;
+    font-size: 0.9rem;
+  }
+  .landing-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    font-size: 0.68rem;
+  }
+  .landing-meta-right {
+    text-align: left;
+  }
+}

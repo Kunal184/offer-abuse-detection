@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Shell from './components/layout/Shell';
+import LandingPage from './pages/LandingPage';
 import OverviewPage from './pages/Overview';
 import CustomersPage from './pages/Customers';
 import CustomerDetailPage from './pages/CustomerDetail';
@@ -11,8 +12,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/" element={<LandingPage />} />
         <Route element={<Shell />}>
-          <Route path="/" element={<OverviewPage />} />
           <Route path="/overview" element={<OverviewPage />} />
           <Route path="/customers" element={<CustomersPage />} />
           <Route path="/customers/:id" element={<CustomerDetailPage />} />
