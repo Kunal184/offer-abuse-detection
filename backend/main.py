@@ -74,7 +74,15 @@ app.add_middleware(
 )
 
 
-# ── Helpers ──────────────────────────────────────────────────────────────────
+from functools import lru_cache
+
+# ── Cache Helpers ────────────────────────────────────────────────────────────
+
+@lru_cache(maxsize=1)
+def _get_model():
+    import joblib
+    return joblib.load(OUTPUTS_DIR / "model_xgboost_groupaware.joblib")
+
 
 def _records(filename: str) -> list[dict]:
     path = DATA_DIR / filename
@@ -83,8 +91,8 @@ def _records(filename: str) -> list[dict]:
     return pd.read_csv(path).to_dict(orient="records")
 
 
-def _load_all_data() -> dict[str, list[dict]]:
-    """Load all raw source tables once."""
+@lru_cache(maxsize=1)
+def _load_all_data_cached() -> dict[str, list[dict]]:
     return {
         "customers": _records("customers.csv"),
         "orders": _records("orders.csv"),
@@ -96,6 +104,11 @@ def _load_all_data() -> dict[str, list[dict]]:
     }
 
 
+def _load_all_data() -> dict[str, list[dict]]:
+    return _load_all_data_cached()
+
+
+@lru_cache(maxsize=1)
 def _compute_as_of() -> str:
     """Return the max timestamp across all source tables as ISO string."""
     all_data = _load_all_data()
@@ -105,6 +118,7 @@ def _compute_as_of() -> str:
     timestamps += [pd.to_datetime(r["timestamp"]) for r in all_data["orders"]]
     timestamps += [pd.to_datetime(r["timestamp"]) for r in all_data["offer_redemptions"]]
     return pd.to_datetime(timestamps).max().isoformat()
+
 
 
 # ── Core prediction endpoint ────────────────────────────────────────────────
@@ -227,7 +241,6 @@ def get_ground_truth():
 @app.get("/v1/overview")
 def get_overview():
     """Return overview statistics using pre-computed features for fast response."""
-    import joblib
     import numpy as np
 
     features = pd.read_csv(DATA_DIR / "customer_features.csv")
@@ -238,8 +251,8 @@ def get_overview():
     gt_df["is_abuse"] = gt_df["abuse_group_id"].notna().astype(int)
     abuse_groups = gt_df[gt_df["is_abuse"] == 1]["abuse_group_id"].value_counts()
 
-    # Load the frozen model and score all customers at once
-    model = joblib.load(OUTPUTS_DIR / "model_xgboost_groupaware.joblib")
+    # Use cached model
+    model = _get_model()
     FEATURE_COLS = [
         "account_age_days", "order_count", "total_spend", "average_spend",
         "time_to_first_order_hours", "redemption_count", "time_to_first_redemption_hours",
@@ -286,13 +299,12 @@ def get_scored_customers():
     call — safe and fast.  The frontend must use this instead of sending
     1000 individual /v1/predictions requests.
     """
-    import joblib
     import numpy as np
 
     customers_df = pd.read_csv(DATA_DIR / "customers.csv")
     features = pd.read_csv(DATA_DIR / "customer_features.csv")
 
-    model = joblib.load(OUTPUTS_DIR / "model_xgboost_groupaware.joblib")
+    model = _get_model()
     FEATURE_COLS = [
         "account_age_days", "order_count", "total_spend", "average_spend",
         "time_to_first_order_hours", "redemption_count", "time_to_first_redemption_hours",
@@ -365,7 +377,6 @@ def get_graph():
 @app.get("/v1/clusters")
 def get_clusters():
     """Return abuse clusters from the graph using pre-computed scores."""
-    import joblib
     import numpy as np
 
     all_data = _load_all_data()
@@ -374,7 +385,7 @@ def get_clusters():
     as_of = _compute_as_of()
 
     # Load model and score all customers at once
-    model = joblib.load(OUTPUTS_DIR / "model_xgboost_groupaware.joblib")
+    model = _get_model()
     FEATURE_COLS = [
         "account_age_days", "order_count", "total_spend", "average_spend",
         "time_to_first_order_hours", "redemption_count", "time_to_first_redemption_hours",
