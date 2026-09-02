@@ -1,0 +1,55 @@
+/* Editorial Customer Detail Page Styling */
+.customer-detail-container {
+  width: 100%;
+  color: #FAFAF8;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.customer-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid rgba(244, 243, 238, 0.12);
+  padding-bottom: 1.5rem;
+}
+
+.customer-detail-title {
+  font-family: 'League Gothic', 'Bebas Neue', sans-serif;
+  font-size: 3.5rem;
+  font-weight: 400;
+  color: #FAFAF8;
+  letter-spacing: 0.02em;
+  line-height: 0.9;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.customer-detail-subtitle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 0.4rem;
+}
+
+.editorial-btn-back {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #E5341C;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: none;
+  border: 1px solid rgba(229, 52, 28, 0.3);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  margin-bottom: 1.5rem;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.editorial-btn-back:hover {
+  border-color: #E5341C;
+  background: rgba(229, 52, 28, 0.08);
+}

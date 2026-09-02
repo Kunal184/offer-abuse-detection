@@ -16,6 +16,7 @@ import type {
   GraphLink,
   EntityType,
 } from '../types/index';
+import './CustomerDetail.css';
 
 const SIGNAL_LABELS: Record<string, { label: string; description: string }> = {
   account_age_days: { label: 'Account Age', description: 'Days since account creation' },
@@ -95,7 +96,6 @@ export default function CustomerDetailPage() {
 
     demoData.devices.filter((d: DeviceRaw) => d.customer_id === id).forEach((d: DeviceRaw) => {
       addEntity(d.device_id, 'device');
-      // Add 2-hop neighbors
       const otherCustomers = demoData.devices.filter((od: DeviceRaw) => od.device_id === d.device_id && od.customer_id !== id);
       otherCustomers.slice(0, 3).forEach((oc: DeviceRaw) => {
         const c2Id = `c_${oc.customer_id}`;
@@ -122,7 +122,6 @@ export default function CustomerDetailPage() {
 
     setGraphData({ nodes, links });
 
-    // Fetch live prediction + SHAP explanation from backend GET /v1/predictions/{id}?explain=true
     loadCustomerPrediction(id, true)
       .then((p) => {
         setPrediction(p);
@@ -151,19 +150,21 @@ export default function CustomerDetailPage() {
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
-        <div style={{ color: 'var(--text-muted)', fontSize: 12, fontFamily: 'var(--font-mono)' }}>SCORING CUSTOMER & GENERATING SHAP EXPLANATION...</div>
+        <div style={{ color: '#E5341C', fontSize: 13, fontFamily: 'JetBrains Mono, monospace' }}>
+          SCORING CUSTOMER & GENERATING SHAP EXPLANATION...
+        </div>
       </div>
     );
   }
 
   if (error || !customer) {
     return (
-      <div>
-        <button className="btn btn-ghost" style={{ marginBottom: 16 }} onClick={() => navigate('/customers')}>
-          ← Back to Customers
+      <div className="customer-detail-container">
+        <button className="editorial-btn-back" onClick={() => navigate('/customers')}>
+          ← BACK TO CUSTOMERS
         </button>
         <div className="empty-state">
-          <div className="empty-state-title">Error</div>
+          <div className="empty-state-title" style={{ color: '#E5341C' }}>Error</div>
           <div className="empty-state-desc">{error || 'Customer not found'}</div>
         </div>
       </div>
@@ -175,9 +176,9 @@ export default function CustomerDetailPage() {
   const initials = customer.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
 
   return (
-    <div>
-      <button className="btn btn-ghost" style={{ marginBottom: 20 }} onClick={() => navigate('/customers')}>
-        ← Back to Customers
+    <div className="customer-detail-container">
+      <button className="editorial-btn-back" onClick={() => navigate('/customers')}>
+        ← BACK TO CUSTOMER LIST
       </button>
 
       {/* Header */}
