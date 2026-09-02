@@ -196,3 +196,33 @@ export async function healthCheck(): Promise<boolean> {
     return false;
   }
 }
+
+/* ─── Real-time Event Stream ──────────────────────────────────── */
+
+export function connectEventStream(onEvent: (event: import('../types').ActivityEvent) => void): () => void {
+  const url = `${BASE}/v1/events/stream`;
+  const eventSource = new EventSource(url);
+
+  eventSource.onmessage = (e) => {
+    try {
+      const data = JSON.parse(e.data);
+      if (data && data.id && data.type && data.description) {
+        onEvent({
+          id: data.id,
+          timestamp: data.timestamp || new Date().toISOString(),
+          type: data.type,
+          description: data.description,
+          severity: data.severity || 'neutral',
+          entityType: data.entityType,
+          entityId: data.entityId,
+        });
+      }
+    } catch {
+      // Ignore heartbeat or non-JSON messages
+    }
+  };
+
+  return () => {
+    eventSource.close();
+  };
+}

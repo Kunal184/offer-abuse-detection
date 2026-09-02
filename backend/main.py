@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import datetime, timezone
 from functools import lru_cache
@@ -9,10 +10,10 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from features.ingestion import REQUIRED_COLUMNS, load_raw_dataset, validate_and_clean_table
@@ -111,6 +112,7 @@ def reset_state() -> None:
     dataset, _ = load_raw_dataset(DATA_DIR)
     _RUNTIME_DATASET = dataset
     _compute_as_of.cache_clear()
+    _EVENT_SUBSCRIBERS.clear()
 
 
 @lru_cache(maxsize=1)
@@ -342,6 +344,60 @@ def ingest_event(request: EventRequest) -> EventResponse:
         except Exception:
             pass
 
+    # Format activity event payload for SSE broadcasting
+    severity = "neutral"
+    risk_label = "CLEAR"
+    if prediction_response:
+        prob = prediction_response.abuse_probability
+        if prob >= 0.7:
+            severity = "high"
+            risk_label = f"HIGH RISK ({prob:.1%})"
+        elif prob >= 0.3:
+            severity = "medium"
+            risk_label = f"MEDIUM RISK ({prob:.1%})"
+        else:
+            severity = "neutral"
+            risk_label = f"CLEAR ({prob:.1%})"
+
+    entity_desc = ""
+    if table_name == "orders":
+        entity_desc = f"Order {request.data.get('order_id')} (₹{request.data.get('amount', 0)})"
+    elif table_name == "offer_redemptions":
+        entity_desc = f"Redemption {request.data.get('redemption_id')} on offer {request.data.get('offer_id')}"
+    elif table_name == "customers":
+        entity_desc = f"Account created ({request.data.get('email', '')})"
+    else:
+        ent_val = (
+            request.data.get("device_id")
+            or request.data.get("address_id")
+            or request.data.get("payment_id")
+            or request.data.get("ip_address")
+        )
+        entity_desc = f"{table_name.replace('customer_', '').capitalize()} {ent_val}"
+
+    cluster_desc = ""
+    if prediction_response and prediction_response.feature_snapshot:
+        c_size = int(prediction_response.feature_snapshot.get("cluster_size", 1))
+        if c_size > 1:
+            cluster_desc = f" · Cluster size {c_size}"
+
+    cid_display = f"Cust {cid[:8]}" if cid else "Unknown"
+    description = f"{cid_display} · {entity_desc} · {risk_label}{cluster_desc}"
+
+    activity_payload = {
+        "id": f"evt_{int(datetime.now(timezone.utc).timestamp() * 1000)}",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "type": raw_type,
+        "description": description,
+        "severity": severity,
+        "customer_id": cid,
+        "entityType": table_name.replace("customer_", "").rstrip("s"),
+        "entityId": entity_desc,
+        "prediction": prediction_response.model_dump() if prediction_response else None,
+    }
+
+    _broadcast_event_sync(activity_payload)
+
     return EventResponse(
         status="success",
         event_type=request.event_type,
@@ -349,6 +405,57 @@ def ingest_event(request: EventRequest) -> EventResponse:
         customer_id=cid,
         is_duplicate=False,
         prediction=prediction_response,
+    )
+
+
+# ── Event Streaming / Subscriber logic ──────────────────────────────────────
+
+_EVENT_SUBSCRIBERS: set[asyncio.Queue] = set()
+
+
+def _broadcast_event_sync(event_data: dict[str, Any]) -> None:
+    for q in list(_EVENT_SUBSCRIBERS):
+        if q.qsize() > 100:
+            _EVENT_SUBSCRIBERS.discard(q)
+            continue
+        try:
+            q.put_nowait(event_data)
+        except Exception:
+            _EVENT_SUBSCRIBERS.discard(q)
+
+
+@app.get("/v1/events/stream")
+async def stream_events(request: Request):
+    """Server-Sent Events (SSE) endpoint publishing live merchant events."""
+    queue: asyncio.Queue = asyncio.Queue()
+    _EVENT_SUBSCRIBERS.add(queue)
+
+    async def event_generator():
+        try:
+            yield f"data: {json.dumps({'type': 'connected'})}\n\n"
+            while True:
+                if await request.is_disconnected() or queue not in _EVENT_SUBSCRIBERS:
+                    break
+                try:
+                    data = await asyncio.wait_for(queue.get(), timeout=0.1)
+                    yield f"data: {json.dumps(data)}\n\n"
+                except asyncio.TimeoutError:
+                    if await request.is_disconnected() or queue not in _EVENT_SUBSCRIBERS:
+                        break
+                    yield ": heartbeat\n\n"
+        except asyncio.CancelledError:
+            pass
+        finally:
+            _EVENT_SUBSCRIBERS.discard(queue)
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 
