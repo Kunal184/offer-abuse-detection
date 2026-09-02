@@ -370,6 +370,43 @@ class EventIngestionTest(unittest.TestCase):
         self.assertEqual(pred_after["decision_threshold"], 0.5)
         self.assertEqual(pred_after["model_version"], pred_before["model_version"])
 
+    def test_10_relationship_events_merge_abuse_clusters_dynamically(self):
+        """Verify relationship events merge separate graph components and update /v1/clusters without affecting unrelated clusters."""
+        clusters_before = self.client.get("/v1/clusters").json()["clusters"]
+        self.assertGreaterEqual(len(clusters_before), 3)
+
+        cl1, cl2, cl_unrelated = clusters_before[0], clusters_before[1], clusters_before[2]
+        c1, c2 = cl1["customers"][0], cl2["customers"][0]
+        unrelated_cust = cl_unrelated["customers"][0]
+
+        size_before_1 = cl1["customerCount"]
+        size_before_2 = cl2["customerCount"]
+        size_unrelated_before = cl_unrelated["customerCount"]
+        total_clusters_before = len(clusters_before)
+
+        shared_device_id = "dev_shared_cluster_merge_100"
+
+        # Ingest device relationship events connecting c1 and c2
+        self.client.post("/v1/events", json={"event_type": "device", "data": {"customer_id": c1, "device_id": shared_device_id}})
+        self.client.post("/v1/events", json={"event_type": "device", "data": {"customer_id": c2, "device_id": shared_device_id}})
+
+        clusters_after = self.client.get("/v1/clusters").json()["clusters"]
+        self.assertEqual(len(clusters_after), total_clusters_before - 1)
+
+        # Verify merged cluster containing both c1 and c2
+        merged_cl = next(c for c in clusters_after if c1 in c["customers"] and c2 in c["customers"])
+        self.assertEqual(merged_cl["customerCount"], size_before_1 + size_before_2)
+
+        # Verify unrelated cluster size is preserved
+        unrelated_cl_after = next(c for c in clusters_after if unrelated_cust in c["customers"])
+        self.assertEqual(unrelated_cl_after["customerCount"], size_unrelated_before)
+
+        # Duplicate event check does not duplicate clusters
+        res_dup = self.client.post("/v1/events", json={"event_type": "device", "data": {"customer_id": c1, "device_id": shared_device_id}})
+        self.assertTrue(res_dup.json()["is_duplicate"])
+        clusters_after_dup = self.client.get("/v1/clusters").json()["clusters"]
+        self.assertEqual(len(clusters_after_dup), len(clusters_after))
+
 
 if __name__ == "__main__":
     unittest.main()
