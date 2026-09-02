@@ -323,6 +323,53 @@ class EventIngestionTest(unittest.TestCase):
 
         self.assertLess(snap_as_of_before["order_count"], snap_as_of_after["order_count"])
 
+    def test_9_xgboost_model_rescoring_on_event_ingestion(self):
+        """Verify real-time event ingestion invokes frozen XGBoost model and returns fresh predictions with consistent metadata."""
+        from unittest.mock import patch
+        import joblib
+
+        scored = self.client.get("/v1/data/scored-customers").json()
+        clean_cust = [c for c in scored if c["abuse_probability"] < 0.1 and c["cluster_size"] == 1][0]
+        abusive_cust = [c for c in scored if c["abuse_probability"] > 0.8 and c["cluster_size"] > 5][0]
+
+        c_clean_id = clean_cust["customer_id"]
+        c_abusive_id = abusive_cust["customer_id"]
+
+        devices_df = pd.read_csv(DATA_DIR / "customer_devices.csv")
+        abusive_device_id = str(devices_df[devices_df["customer_id"] == c_abusive_id].iloc[0]["device_id"])
+
+        pred_before = self.client.post("/v1/predictions/batch", json={
+            "customer_ids": [c_clean_id],
+            "as_of": "2027-03-01T00:00:00Z",
+        }).json()["predictions"][0]
+
+        self.assertEqual(pred_before["model_name"], "xgboost_groupaware")
+        self.assertEqual(pred_before["decision_threshold"], 0.5)
+        self.assertTrue(pred_before["model_version"].startswith("sha256:"))
+
+        # Mock model load to trace frozen artifact invocation
+        with patch("ml.inference._load_cached_model") as mock_model_loader:
+            real_model = joblib.load(ROOT / "ml" / "outputs" / "model_xgboost_groupaware.joblib")
+            mock_model_loader.return_value = real_model
+
+            res_event = self.client.post("/v1/events", json={
+                "event_type": "device",
+                "data": {
+                    "customer_id": c_clean_id,
+                    "device_id": abusive_device_id,
+                },
+            })
+            self.assertEqual(res_event.status_code, 200)
+            self.assertTrue(mock_model_loader.called)
+
+        pred_after = res_event.json()["prediction"]
+        self.assertIsNotNone(pred_after)
+        self.assertNotEqual(pred_after["abuse_probability"], pred_before["abuse_probability"])
+        self.assertGreater(pred_after["feature_snapshot"]["cluster_size"], pred_before["feature_snapshot"]["cluster_size"])
+        self.assertEqual(pred_after["model_name"], "xgboost_groupaware")
+        self.assertEqual(pred_after["decision_threshold"], 0.5)
+        self.assertEqual(pred_after["model_version"], pred_before["model_version"])
+
 
 if __name__ == "__main__":
     unittest.main()
