@@ -65,6 +65,20 @@ class BatchPredictionResponse(BaseModel):
     scored_at: str
 
 
+class EventRequest(BaseModel):
+    event_type: str = Field(..., min_length=1, description="Event type: customer, order, offer_redemption, device, address, payment, ip")
+    data: dict[str, Any] = Field(..., description="Event payload data")
+
+
+class EventResponse(BaseModel):
+    status: str
+    event_type: str
+    table_name: str
+    customer_id: str | None = None
+    is_duplicate: bool = False
+    prediction: PredictionResponse | None = None
+
+
 app = FastAPI(title="Offer Abuse Detection API", version="1.0.0")
 
 app.add_middleware(
@@ -78,20 +92,35 @@ app.add_middleware(
 
 # ── Cache Helpers ────────────────────────────────────────────────────────────
 
+# ── Cache & State Helpers ───────────────────────────────────────────────────
+
+_RUNTIME_DATASET: dict[str, pd.DataFrame] | None = None
+
+
+def get_state() -> dict[str, pd.DataFrame]:
+    global _RUNTIME_DATASET
+    if _RUNTIME_DATASET is None:
+        dataset, _ = load_raw_dataset(DATA_DIR)
+        _RUNTIME_DATASET = dataset
+    return _RUNTIME_DATASET
+
+
+def reset_state() -> None:
+    """Reset in-memory state to baseline raw dataset."""
+    global _RUNTIME_DATASET
+    dataset, _ = load_raw_dataset(DATA_DIR)
+    _RUNTIME_DATASET = dataset
+    _compute_as_of.cache_clear()
+
+
 @lru_cache(maxsize=1)
 def _get_model() -> Any:
     import joblib
     return joblib.load(OUTPUTS_DIR / "model_xgboost_groupaware.joblib")
 
 
-@lru_cache(maxsize=1)
-def _load_all_data_cached() -> dict[str, pd.DataFrame]:
-    dataset, _ = load_raw_dataset(DATA_DIR)
-    return dataset
-
-
 def _load_all_data() -> dict[str, pd.DataFrame]:
-    return _load_all_data_cached()
+    return get_state()
 
 
 import math
@@ -197,6 +226,129 @@ def predict_batch(request: BatchPredictionRequest) -> BatchPredictionResponse:
     return BatchPredictionResponse(
         predictions=predictions,
         scored_at=datetime.now(timezone.utc).isoformat(),
+    )
+
+
+# ── Event Ingestion endpoint ────────────────────────────────────────────────
+
+TABLE_MAPPING = {
+    "customer": "customers",
+    "customers": "customers",
+    "order": "orders",
+    "orders": "orders",
+    "offer_redemption": "offer_redemptions",
+    "offer-redemption": "offer_redemptions",
+    "offer redemption": "offer_redemptions",
+    "redemption": "offer_redemptions",
+    "redemptions": "offer_redemptions",
+    "device": "customer_devices",
+    "customer_device": "customer_devices",
+    "devices": "customer_devices",
+    "address": "customer_addresses",
+    "customer_address": "customer_addresses",
+    "addresses": "customer_addresses",
+    "payment": "customer_payments",
+    "customer_payment": "customer_payments",
+    "payments": "customer_payments",
+    "ip": "customer_ips",
+    "customer_ip": "customer_ips",
+    "ips": "customer_ips",
+}
+
+
+def _is_duplicate_event(table_name: str, clean_df: pd.DataFrame, current_df: pd.DataFrame) -> bool:
+    if current_df.empty or clean_df.empty:
+        return False
+
+    row = clean_df.iloc[0]
+
+    if table_name == "customers":
+        return str(row["customer_id"]) in set(current_df["customer_id"].astype(str))
+    elif table_name == "orders":
+        return str(row["order_id"]) in set(current_df["order_id"].astype(str))
+    elif table_name == "offer_redemptions":
+        return str(row["redemption_id"]) in set(current_df["redemption_id"].astype(str))
+    elif table_name == "customer_devices":
+        pairs = set(zip(current_df["customer_id"].astype(str), current_df["device_id"].astype(str)))
+        return (str(row["customer_id"]), str(row["device_id"])) in pairs
+    elif table_name == "customer_addresses":
+        pairs = set(zip(current_df["customer_id"].astype(str), current_df["address_id"].astype(str)))
+        return (str(row["customer_id"]), str(row["address_id"])) in pairs
+    elif table_name == "customer_payments":
+        pairs = set(zip(current_df["customer_id"].astype(str), current_df["payment_id"].astype(str)))
+        return (str(row["customer_id"]), str(row["payment_id"])) in pairs
+    elif table_name == "customer_ips":
+        pairs = set(zip(current_df["customer_id"].astype(str), current_df["ip_address"].astype(str)))
+        return (str(row["customer_id"]), str(row["ip_address"])) in pairs
+
+    return False
+
+
+@app.post("/v1/events", response_model=EventResponse)
+def ingest_event(request: EventRequest) -> EventResponse:
+    """Ingest a real-time merchant event and update state."""
+    raw_type = request.event_type.lower().strip()
+    if raw_type not in TABLE_MAPPING:
+        supported = "customer, order, offer_redemption, device, address, payment, ip"
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported event_type '{request.event_type}'. Supported types: {supported}",
+        )
+
+    table_name = TABLE_MAPPING[raw_type]
+    raw_df = pd.DataFrame([request.data])
+    clean_df, report = validate_and_clean_table(raw_df, table_name)
+
+    if clean_df.empty or report.dropped_rows > 0 or report.missing_columns:
+        err_msg = report.errors[0] if report.errors else f"Payload invalid for table {table_name}"
+        raise HTTPException(status_code=422, detail=err_msg)
+
+    state = get_state()
+    current_df = state.get(table_name, pd.DataFrame())
+
+    cid_raw = clean_df.iloc[0].get("customer_id")
+    cid = str(cid_raw) if cid_raw is not None and pd.notna(cid_raw) else None
+
+    is_dup = _is_duplicate_event(table_name, clean_df, current_df)
+    if is_dup:
+        return EventResponse(
+            status="ignored",
+            event_type=request.event_type,
+            table_name=table_name,
+            customer_id=cid,
+            is_duplicate=True,
+            prediction=None,
+        )
+
+    state[table_name] = pd.concat([current_df, clean_df], ignore_index=True)
+    _compute_as_of.cache_clear()
+
+    prediction_response = None
+    if cid and not state["customers"].empty and cid in set(state["customers"]["customer_id"]):
+        try:
+            as_of_ts = pd.Timestamp(_compute_as_of())
+            pred_result = score_customer(
+                customer_id=cid,
+                customers=state["customers"],
+                orders=state["orders"],
+                offer_redemptions=state["offer_redemptions"],
+                customer_devices=state["customer_devices"],
+                customer_addresses=state["customer_addresses"],
+                customer_payments=state["customer_payments"],
+                customer_ips=state["customer_ips"],
+                as_of=as_of_ts,
+            )
+            prediction_response = PredictionResponse.model_validate(pred_result)
+        except Exception:
+            pass
+
+    return EventResponse(
+        status="success",
+        event_type=request.event_type,
+        table_name=table_name,
+        customer_id=cid,
+        is_duplicate=False,
+        prediction=prediction_response,
     )
 
 
