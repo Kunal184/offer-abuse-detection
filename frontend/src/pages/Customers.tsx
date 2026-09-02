@@ -27,15 +27,9 @@ export default function CustomersPage() {
   const [riskFilter, setRiskFilter] = useState('all');
   const [sortBy, setSortBy] = useState<'risk' | 'name' | 'last'>('risk');
 
-  const initRef = useRef(false);
-
   useEffect(() => {
-    // Guard: only fetch once, and only if data not already in store
-    if (initRef.current) return;
-    initRef.current = true;
-
     const store = useAppStore.getState();
-    if (store.customers.length > 0) return; // already loaded
+    if (store.customers.length > 0 || store.loading.customers) return;
 
     setLoading('customers', true);
     setError('customers', null);

@@ -11,18 +11,11 @@ export default function OverviewPage() {
   const loading = useAppStore((s) => s.loading);
   const error = useAppStore((s) => s.error);
 
-  const initRef = useRef(false);
-
   useEffect(() => {
-    if (initRef.current) return;
-    initRef.current = true;
-
     const store = useAppStore.getState();
     const { setOverview, setGraph, setClusters, setLoading, setError } = store;
 
-    // Each request is independent — a failure in one must NOT clear data from another.
-
-    if (!store.overview) {
+    if (!store.overview && !store.loading.overview) {
       setLoading('overview', true);
       loadOverview()
         .then(setOverview)
@@ -32,24 +25,21 @@ export default function OverviewPage() {
         .finally(() => setLoading('overview', false));
     }
 
-    if (store.graphNodes.length === 0) {
+    if (store.graphNodes.length === 0 && !store.loading.graph) {
       setLoading('graph', true);
       loadGraph()
         .then((g) => setGraph(g.nodes, g.links))
         .catch((e: unknown) => {
-          // Do NOT call setGraph([], []) here — that would overwrite potentially
-          // valid graph data loaded by AbuseClusters and cause it to disappear.
           setError('graph', e instanceof Error ? e.message : String(e));
         })
         .finally(() => setLoading('graph', false));
     }
 
-    if (store.clusters.length === 0) {
+    if (store.clusters.length === 0 && !store.loading.clusters) {
       setLoading('clusters', true);
       loadClusters()
         .then((d) => setClusters(d.clusters || []))
         .catch((e: unknown) => {
-          // Do NOT call setClusters([]) — that would erase successfully loaded data.
           setError('clusters', e instanceof Error ? e.message : String(e));
         })
         .finally(() => setLoading('clusters', false));

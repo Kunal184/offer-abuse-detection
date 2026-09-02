@@ -18,16 +18,10 @@ export default function AbuseClustersPage() {
   const [clusterError, setClusterError] = useState<string | null>(null);
   const [graphError, setGraphError] = useState<string | null>(null);
 
-  const initRef = useRef(false);
-
   useEffect(() => {
-    if (initRef.current) return;
-    initRef.current = true;
-
     const store = useAppStore.getState();
 
-    // Load clusters independently — a failure here must NOT clear graph data
-    if (store.clusters.length === 0) {
+    if (store.clusters.length === 0 && !store.loading.clusters) {
       setLoading('clusters', true);
       setClusterError(null);
       loadClusters()
@@ -44,7 +38,7 @@ export default function AbuseClustersPage() {
     }
 
     // Load graph independently — a failure here must NOT clear cluster data
-    if (store.graphNodes.length === 0) {
+    if (store.graphNodes.length === 0 && !store.loading.graph) {
       setLoading('graph', true);
       setGraphError(null);
       loadGraph()
