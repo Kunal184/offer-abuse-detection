@@ -4,16 +4,8 @@ import { useAppStore, getRiskLevel } from '../store/appStore';
 import { loadScoredCustomers } from '../api/client';
 import RiskBadge from '../components/shared/RiskBadge';
 import type { CustomerEnriched } from '../types/index';
+import './Customers.css';
 
-/**
- * Customers page.
- *
- * Uses GET /v1/data/scored-customers — a single bulk call that returns
- * every customer already joined with their pre-computed ML abuse score.
- *
- * This replaces the old approach of calling scoreCustomers() for all 1000
- * customers individually (which would require ~8 hours of inference time).
- */
 export default function CustomersPage() {
   const navigate = useNavigate();
   const customers = useAppStore((s) => s.customers);
@@ -107,64 +99,63 @@ export default function CustomersPage() {
   const clearCount = customers.filter((c) => c.risk === 'clear').length;
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+    <div className="customers-container">
+      <div className="customers-header">
         <div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Customers</h1>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+          <h1 className="customers-title">CUSTOMER INVESTIGATION</h1>
+          <p className="customers-subtitle">
             {loading
               ? 'Loading customer scores...'
               : error
               ? `Error: ${error}`
-              : `${customers.length} customers analyzed`}
+              : `${customers.length} CUSTOMER IDENTITIES ANALYZED`}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <span className="badge badge-high">{flaggedCount} flagged</span>
-          <span className="badge badge-medium">{watchCount} watch</span>
-          <span className="badge badge-clear">{clearCount} clear</span>
+        <div className="badge-tape-group">
+          <span className="badge-tape-high">{flaggedCount} FLAGGED</span>
+          <span className="badge-tape-medium">{watchCount} WATCH</span>
+          <span className="badge-tape-clear">{clearCount} CLEAR</span>
         </div>
       </div>
 
-      <div className="filter-bar" style={{ marginBottom: 20 }}>
+      <div className="editorial-filter-bar">
         <input
-          className="search-input"
-          placeholder="Search by name, email, or ID..."
+          className="editorial-search-input"
+          placeholder="SEARCH BY NAME, EMAIL, OR CUSTOMER ID..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         <select
-          className="filter-select"
+          className="editorial-select"
           value={riskFilter}
           onChange={(e) => setRiskFilter(e.target.value)}
         >
-          <option value="all">All risks</option>
-          <option value="high">Flagged</option>
-          <option value="medium">Watch</option>
-          <option value="clear">Clear</option>
+          <option value="all">ALL RISKS</option>
+          <option value="high">FLAGGED</option>
+          <option value="medium">WATCH</option>
+          <option value="clear">CLEAR</option>
         </select>
         <select
-          className="filter-select"
+          className="editorial-select"
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as 'risk' | 'name' | 'last')}
         >
-          <option value="risk">Sort: Risk</option>
-          <option value="name">Sort: Name</option>
-          <option value="last">Sort: Last Activity</option>
+          <option value="risk">SORT: RISK SCORE</option>
+          <option value="name">SORT: NAME</option>
+          <option value="last">SORT: LAST ACTIVITY</option>
         </select>
       </div>
 
-      <div className="card">
-        <table className="data-table">
+      <div className="editorial-table-card">
+        <table className="editorial-data-table">
           <thead>
             <tr>
-              <th>Customer</th>
-              <th>ID</th>
+              <th>Customer Name</th>
+              <th>Customer ID</th>
               <th>Abuse Probability</th>
-              <th>Risk Level</th>
+              <th>Risk Assessment</th>
               <th>Connections</th>
               <th>Cluster Size</th>
-              <th>Last Activity</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -172,7 +163,7 @@ export default function CustomersPage() {
             {loading ? (
               Array.from({ length: 8 }).map((_, i) => (
                 <tr key={i}>
-                  {Array.from({ length: 8 }).map((_, j) => (
+                  {Array.from({ length: 7 }).map((_, j) => (
                     <td key={j}>
                       <div className="skeleton" style={{ height: 16, width: j === 1 ? 160 : 80 }} />
                     </td>
@@ -181,16 +172,16 @@ export default function CustomersPage() {
               ))
             ) : error ? (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={7}>
                   <div className="empty-state">
-                    <div className="empty-state-title" style={{ color: 'var(--risk-high)' }}>Error loading customers</div>
+                    <div className="empty-state-title" style={{ color: '#E5341C' }}>Error loading customers</div>
                     <div className="empty-state-desc">{error}</div>
                   </div>
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={8}>
+                <td colSpan={7}>
                   <div className="empty-state">
                     <div className="empty-state-title">No customers found</div>
                     <div className="empty-state-desc">Try adjusting your search or filters</div>
@@ -198,83 +189,42 @@ export default function CustomersPage() {
                 </td>
               </tr>
             ) : (
-              filtered.map((customer) => (
-                <tr
-                  key={customer.customer_id}
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => navigate(`/customers/${customer.customer_id}`)}
-                >
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div className={`customer-avatar ${customer.risk === 'high' ? 'flagged' : ''}`}>
-                        {customer.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+              filtered.map((c) => {
+                const pct = (c.abuse_probability * 100).toFixed(1);
+                const barColor = c.risk === 'high' ? '#E5341C' : c.risk === 'medium' ? '#EF9F27' : '#1D9E75';
+                return (
+                  <tr key={c.customer_id} onClick={() => navigate(`/customers/${c.customer_id}`)}>
+                    <td style={{ fontWeight: 600, color: '#FAFAF8' }}>{c.name}</td>
+                    <td style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.82rem', color: 'rgba(250,250,248,0.7)' }}>{c.customer_id}</td>
+                    <td>
+                      <div className="prob-bar-container">
+                        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.88rem', fontWeight: 700, width: '48px', color: barColor }}>
+                          {pct}%
+                        </span>
+                        <div className="prob-bar-bg">
+                          <div className="prob-bar-fill" style={{ width: `${pct}%`, backgroundColor: barColor }} />
+                        </div>
                       </div>
-                      <div>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{customer.name}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{customer.email}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <span className="mono" style={{ fontSize: 11 }}>
-                      {customer.customer_id.slice(0, 8)}…
-                    </span>
-                  </td>
-                  <td>
-                    <span
-                      style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color:
-                          customer.risk === 'high'
-                            ? 'var(--risk-high)'
-                            : customer.risk === 'medium'
-                            ? 'var(--risk-medium)'
-                            : 'var(--risk-low)',
-                      }}
-                    >
-                      {customer.abuse_probability > 0
-                        ? `${(customer.abuse_probability * 100).toFixed(1)}%`
-                        : '—'}
-                    </span>
-                  </td>
-                  <td><RiskBadge level={customer.risk} /></td>
-                  <td><span className="mono">{customer.connected_customers}</span></td>
-                  <td><span className="mono">{customer.cluster_size}</span></td>
-                  <td>
-                    <span className="mono">
-                      {new Date(customer.last_activity).toLocaleDateString('en-IN', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: '2-digit',
-                      })}
-                    </span>
-                  </td>
-                  <td>
-                    <span
-                      className="badge"
-                      style={{
-                        background:
-                          customer.status === 'flagged'
-                            ? 'rgba(217,57,31,0.15)'
-                            : 'rgba(29,158,117,0.12)',
-                        color:
-                          customer.status === 'flagged'
-                            ? 'var(--risk-high)'
-                            : 'var(--risk-low)',
-                        border: `1px solid ${
-                          customer.status === 'flagged'
-                            ? 'rgba(217,57,31,0.3)'
-                            : 'rgba(29,158,117,0.25)'
-                        }`,
-                      }}
-                    >
-                      {customer.status === 'flagged' ? 'FLAGGED' : 'ACTIVE'}
-                    </span>
-                  </td>
-                </tr>
-              ))
+                    </td>
+                    <td>
+                      <RiskBadge level={c.risk} />
+                    </td>
+                    <td style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.88rem' }}>{c.connected_customers}</td>
+                    <td style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: '0.88rem' }}>{c.cluster_size}</td>
+                    <td>
+                      <span style={{
+                        fontFamily: 'JetBrains Mono, monospace',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        textTransform: 'uppercase',
+                        color: c.status === 'flagged' ? '#E5341C' : '#1D9E75'
+                      }}>
+                        {c.status}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
