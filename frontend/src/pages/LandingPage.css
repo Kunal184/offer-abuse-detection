@@ -1,8 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=League+Gothic&family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=League+Gothic&family=Bebas+Neue&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
 
-/* Landing Page Viewport 1 Styling */
-.landing-viewport {
-  width: 100vw;
+/* Master Page Container */
+.landing-container {
+  width: 100%;
+  min-height: 100vh;
+  background-color: #f4f3ee;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* SECTION 1: HERO VIEWPORT (Completely untouched) */
+.landing-hero-section {
+  width: 100%;
   height: 100vh;
   height: 100dvh;
   background-color: #f4f3ee;
@@ -12,13 +21,7 @@
   justify-content: space-between;
   padding: 2.5rem 3.5rem;
   box-sizing: border-box;
-  overflow: hidden;
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 9999;
+  position: relative;
 }
 
 .landing-header {
@@ -123,25 +126,346 @@
   text-align: right;
 }
 
-@media (max-width: 768px) {
-  .landing-viewport {
-    padding: 1.5rem 1.5rem;
+/* SECTION 2: VERTICAL 3-STEP EDITORIAL NARRATIVE */
+.vertical-editorial-section {
+  width: 100%;
+  background-color: #0D0D0D;
+  color: #f4f3ee;
+  padding: 10rem 4rem 14rem 4rem;
+  box-sizing: border-box;
+  position: relative;
+  border-top: 1px solid rgba(229, 52, 28, 0.15);
+}
+
+.vertical-editorial-container {
+  max-width: 1150px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.vertical-step-block {
+  margin-bottom: 12rem;
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 4rem;
+  align-items: center;
+}
+
+.vertical-step-block:last-child {
+  margin-bottom: 0;
+}
+
+.step-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.step-tag {
+  font-family: 'League Gothic', 'Bebas Neue', sans-serif;
+  font-size: clamp(2rem, 3.5vw, 3.5rem);
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #e5341c;
+  margin-bottom: 1.25rem;
+  line-height: 1;
+}
+
+.step-headline {
+  font-family: 'League Gothic', 'Bebas Neue', sans-serif;
+  font-size: clamp(3.5rem, 7vw, 7.5rem);
+  font-weight: 400;
+  line-height: 0.85;
+  text-transform: uppercase;
+  color: #f4f3ee;
+  margin: 0 0 1.5rem 0;
+  letter-spacing: -0.01em;
+}
+
+.step-subtext {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: clamp(1.15rem, 1.8vw, 1.5rem);
+  font-weight: 400;
+  line-height: 1.6;
+  color: rgba(244, 243, 238, 0.82);
+  max-width: 580px;
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.step-visual-container {
+  width: 100%;
+  height: 400px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.step-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* SVG Panel Graphics */
+.panel-node-offer {
+  fill: #0D0D0D;
+  stroke: #e5341c;
+  stroke-width: 2.5;
+}
+
+.panel-node-cust {
+  fill: #f4f3ee;
+  stroke: #f4f3ee;
+}
+
+.panel-node-cust-flagged {
+  fill: #e5341c;
+  stroke: #e5341c;
+}
+
+.panel-node-entity {
+  fill: #0D0D0D;
+  stroke: rgba(244, 243, 238, 0.6);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+}
+
+.panel-line-subtle {
+  stroke: rgba(244, 243, 238, 0.2);
+  stroke-width: 1.5;
+}
+
+.panel-line-red {
+  stroke: #e5341c;
+  stroke-width: 2.5;
+}
+
+.panel-label {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  fill: #f4f3ee;
+}
+
+.panel-label-red {
+  fill: #e5341c;
+}
+
+/* SECTION 3: 2×2 EDITORIAL ANALYTICS GRID (Cream #F4F3EE Colorway matching Section 1) */
+.editorial-grid-section {
+  width: 100%;
+  background-color: #F4F3EE;
+  color: #E5341C;
+  padding: 8rem 4rem 14rem 4rem;
+  box-sizing: border-box;
+  position: relative;
+  border-top: 2px solid #E5341C;
+}
+
+.editorial-grid-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.editorial-grid-title {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #E5341C;
+  margin-bottom: 2.5rem;
+}
+
+.editorial-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: 1px solid rgba(229, 52, 28, 0.3);
+  background-color: #F4F3EE;
+}
+
+.grid-quadrant {
+  padding: 4.5rem 4rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 420px;
+  box-sizing: border-box;
+  position: relative;
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.grid-quadrant.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.grid-quadrant.quad-top-left {
+  border-right: 1px solid rgba(229, 52, 28, 0.3);
+  border-bottom: 1px solid rgba(229, 52, 28, 0.3);
+}
+
+.grid-quadrant.quad-top-right {
+  border-bottom: 1px solid rgba(229, 52, 28, 0.3);
+}
+
+.grid-quadrant.quad-bottom-left {
+  border-right: 1px solid rgba(229, 52, 28, 0.3);
+}
+
+.grid-quadrant.quad-bottom-right {
+  border: none;
+}
+
+.quadrant-tag {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #E5341C;
+  margin-bottom: 1.5rem;
+}
+
+.quadrant-giant-number {
+  font-family: 'League Gothic', 'Bebas Neue', sans-serif;
+  font-size: clamp(5.5rem, 12vw, 13rem);
+  font-weight: 400;
+  line-height: 0.8;
+  color: #E5341C;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.5rem;
+}
+
+.quadrant-headline {
+  font-family: 'League Gothic', 'Bebas Neue', sans-serif;
+  font-size: clamp(2.5rem, 5vw, 4.8rem);
+  font-weight: 400;
+  line-height: 0.9;
+  text-transform: uppercase;
+  color: #E5341C;
+  margin: 0 0 0.5rem 0;
+  letter-spacing: -0.01em;
+}
+
+.quadrant-subtext {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: clamp(1.05rem, 1.5vw, 1.3rem);
+  font-weight: 600;
+  line-height: 1.6;
+  color: #E5341C;
+  margin: 0;
+  letter-spacing: -0.01em;
+  max-width: 460px;
+}
+
+.network-evidence-art {
+  width: 100%;
+  height: 180px;
+  margin-top: 1.5rem;
+  position: relative;
+}
+
+/* F1 Metric Striped Banner Widget (Tailored for Cream Colorway) */
+.f1-widget-banner {
+  width: 100%;
+  height: 200px;
+  margin-top: 1.25rem;
+  margin-bottom: 1.25rem;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(229, 52, 28, 0.4);
+}
+
+.f1-widget-stripes {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+}
+
+.f1-stripe {
+  height: 100%;
+}
+
+.f1-stripe-1 { background-color: #611207; flex: 1; }
+.f1-stripe-2 { background-color: #8C1A0B; flex: 1.2; }
+.f1-stripe-3 { background-color: #B8230F; flex: 1.5; }
+.f1-stripe-4 { background-color: #E5341C; flex: 3.2; } /* Center dominant band */
+.f1-stripe-5 { background-color: #B8230F; flex: 1.5; }
+.f1-stripe-6 { background-color: #8C1A0B; flex: 1.2; }
+.f1-stripe-7 { background-color: #611207; flex: 1; }
+
+.f1-widget-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.f1-widget-val {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(3.2rem, 7vw, 6.8rem);
+  font-weight: 800;
+  line-height: 0.85;
+  color: #F4F3EE;
+  letter-spacing: -0.02em;
+  text-shadow: 0 4px 18px rgba(0, 0, 0, 0.65);
+}
+
+.f1-widget-label {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: clamp(0.95rem, 1.5vw, 1.25rem);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #F4F3EE;
+  margin-top: 0.6rem;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.65);
+}
+
+/* Responsive Overrides */
+@media (max-width: 992px) {
+  .vertical-step-block {
+    grid-template-columns: 1fr;
+    gap: 2.5rem;
+    margin-bottom: 8rem;
   }
-  .landing-title {
-    font-size: clamp(3.5rem, 16vw, 7rem);
-    line-height: 0.85;
+  .step-visual-container {
+    height: 300px;
   }
-  .landing-subtext {
-    margin-top: 1.25rem;
-    font-size: 0.9rem;
+  .step-headline {
+    font-size: clamp(3rem, 10vw, 5.5rem);
   }
-  .landing-footer {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.5rem;
-    font-size: 0.68rem;
+  .editorial-grid {
+    grid-template-columns: 1fr;
   }
-  .landing-meta-right {
-    text-align: left;
+  .grid-quadrant.quad-top-left {
+    border-right: none;
+    border-bottom: 1px solid rgba(229, 52, 28, 0.3);
+  }
+  .grid-quadrant.quad-bottom-left {
+    border-right: none;
+    border-bottom: 1px solid rgba(229, 52, 28, 0.3);
+  }
+  .grid-quadrant {
+    padding: 3rem 2rem;
+    min-height: 320px;
   }
 }
