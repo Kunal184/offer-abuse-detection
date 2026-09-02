@@ -152,6 +152,58 @@ class EventIngestionTest(unittest.TestCase):
         self.assertEqual(batch_res.status_code, 200)
         self.assertEqual(len(batch_res.json()["predictions"]), 1)
 
+    def test_6_verify_all_seven_event_types(self):
+        """Systematically verify state before/after, API visibility, and duplicate checks for all 7 event types."""
+        specs = [
+            ("customer", "/v1/data/customers", "customer_id", "cust_verify_100", {
+                "customer_id": "cust_verify_100", "name": "Test Cust", "email": "tc@example.com",
+                "phone": "919000000000", "created_at": "2026-09-02T10:00:00Z",
+            }),
+            ("order", "/v1/data/orders", "order_id", "ord_verify_100", {
+                "order_id": "ord_verify_100", "customer_id": "cust_verify_100", "amount": 299.0,
+                "timestamp": "2026-09-02T10:05:00Z",
+            }),
+            ("offer_redemption", "/v1/data/redemptions", "redemption_id", "red_verify_100", {
+                "redemption_id": "red_verify_100", "customer_id": "cust_verify_100", "order_id": "ord_verify_100",
+                "offer_id": "off_20", "timestamp": "2026-09-02T10:06:00Z",
+            }),
+            ("device", "/v1/data/devices", "device_id", "dev_verify_100", {
+                "customer_id": "cust_verify_100", "device_id": "dev_verify_100",
+            }),
+            ("address", "/v1/data/addresses", "address_id", "addr_verify_100", {
+                "customer_id": "cust_verify_100", "address_id": "addr_verify_100",
+            }),
+            ("payment", "/v1/data/payments", "payment_id", "pay_verify_100", {
+                "customer_id": "cust_verify_100", "payment_id": "pay_verify_100",
+            }),
+            ("ip", "/v1/data/ips", "ip_address", "10.0.0.100", {
+                "customer_id": "cust_verify_100", "ip_address": "10.0.0.100",
+            }),
+        ]
+
+        for etype, ep, key, val, data in specs:
+            with self.subTest(event_type=etype):
+                # 1. State before
+                before = self.client.get(ep).json()
+                count_before = len(before)
+
+                # 2. Ingest event
+                res = self.client.post("/v1/events", json={"event_type": etype, "data": data})
+                self.assertEqual(res.status_code, 200)
+                self.assertFalse(res.json()["is_duplicate"])
+
+                # 3. State after & API visibility
+                after = self.client.get(ep).json()
+                self.assertEqual(len(after), count_before + 1)
+                self.assertTrue(any(row.get(key) == val for row in after))
+
+                # 4. Duplicate submission check
+                res_dup = self.client.post("/v1/events", json={"event_type": etype, "data": data})
+                self.assertEqual(res_dup.status_code, 200)
+                self.assertTrue(res_dup.json()["is_duplicate"])
+                after_dup = self.client.get(ep).json()
+                self.assertEqual(len(after_dup), count_before + 1)
+
 
 if __name__ == "__main__":
     unittest.main()
