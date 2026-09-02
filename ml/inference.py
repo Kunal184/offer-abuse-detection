@@ -15,6 +15,7 @@ from typing import Any
 
 import joblib
 import pandas as pd
+import xgboost as xgb
 
 from features.feature_engineering import build_feature_matrix
 from features.ingestion import validate_and_clean_table
@@ -123,6 +124,62 @@ def _model_version(model_path: Path) -> str:
     return f"sha256:{digest}"
 
 
+def compute_shap_explanation(
+    feature_snapshot: dict[str, Any] | pd.Series,
+    model: Any,
+    top_k: int = 5,
+) -> dict[str, Any]:
+    """Compute exact Tree SHAP explanations for a single 16-feature vector."""
+    if isinstance(feature_snapshot, dict):
+        vals = [feature_snapshot[c] for c in FEATURE_COLUMNS]
+    else:
+        vals = [feature_snapshot[c] for c in FEATURE_COLUMNS]
+
+    feature_df = pd.DataFrame([vals], columns=list(FEATURE_COLUMNS))
+    booster = model.get_booster()
+    dmatrix = xgb.DMatrix(feature_df, feature_names=list(FEATURE_COLUMNS))
+    contribs = booster.predict(dmatrix, pred_contribs=True)[0]
+
+    shap_values = contribs[: len(FEATURE_COLUMNS)]
+    base_value = float(contribs[len(FEATURE_COLUMNS)])
+
+    contributions = []
+    for fname, shap_val in zip(FEATURE_COLUMNS, shap_values):
+        fval = float(feature_df.iloc[0][fname])
+        shap_v = float(shap_val)
+
+        if shap_v > 0:
+            direction = "increases_risk"
+            impact = f"{fname} ({fval:.2f}) increases risk by +{shap_v:.4f} log-odds"
+        elif shap_v < 0:
+            direction = "decreases_risk"
+            impact = f"{fname} ({fval:.2f}) decreases risk by {shap_v:.4f} log-odds"
+        else:
+            direction = "neutral"
+            impact = f"{fname} ({fval:.2f}) has neutral impact"
+
+        contributions.append({
+            "feature_name": fname,
+            "feature_value": fval,
+            "shap_value": shap_v,
+            "direction": direction,
+            "impact": impact,
+        })
+
+    pos_contributors = [c for c in contributions if c["shap_value"] > 0]
+    pos_contributors.sort(key=lambda x: x["shap_value"], reverse=True)
+
+    neg_contributors = [c for c in contributions if c["shap_value"] < 0]
+    neg_contributors.sort(key=lambda x: x["shap_value"])
+
+    return {
+        "base_value": base_value,
+        "top_positive_contributors": pos_contributors[:top_k],
+        "top_negative_contributors": neg_contributors[:top_k],
+        "all_contributions": contributions,
+    }
+
+
 def score_customer(
     customer_id: str,
     customers: pd.DataFrame,
@@ -134,6 +191,7 @@ def score_customer(
     customer_ips: pd.DataFrame,
     as_of: Any,
     model_path: str | os.PathLike[str] = MODEL_PATH,
+    include_explanation: bool = False,
 ) -> dict[str, Any]:
     """Score one customer from historical data available no later than ``as_of``."""
     as_of_timestamp = _normalise_as_of(as_of)
@@ -170,7 +228,7 @@ def score_customer(
     feature_snapshot = {name: feature_row[name].item() for name in FEATURE_COLUMNS}
     graph_signals = {name: feature_snapshot[name] for name in GRAPH_SIGNAL_COLUMNS}
 
-    return {
+    res = {
         "customer_id": customer_id,
         "abuse_probability": probability,
         "predicted_label": int(probability >= DECISION_THRESHOLD),
@@ -182,3 +240,8 @@ def score_customer(
         "as_of": as_of_timestamp.isoformat(),
         "scored_at": datetime.now(timezone.utc).isoformat(),
     }
+
+    if include_explanation:
+        res["explanation"] = compute_shap_explanation(feature_snapshot, model)
+
+    return res

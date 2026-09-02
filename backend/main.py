@@ -31,6 +31,21 @@ class HistoricalData(BaseModel):
     model_config = ConfigDict(extra="allow")
 
 
+class ShapContributor(BaseModel):
+    feature_name: str
+    feature_value: float
+    shap_value: float
+    direction: str
+    impact: str
+
+
+class ShapExplanation(BaseModel):
+    base_value: float
+    top_positive_contributors: list[ShapContributor]
+    top_negative_contributors: list[ShapContributor]
+    all_contributions: list[ShapContributor]
+
+
 class PredictionRequest(BaseModel):
     customer_id: str = Field(min_length=1)
     customers: list[HistoricalData]
@@ -41,6 +56,7 @@ class PredictionRequest(BaseModel):
     customer_payments: list[HistoricalData]
     customer_ips: list[HistoricalData]
     as_of: datetime
+    explain: bool = False
 
 
 class PredictionResponse(BaseModel):
@@ -54,11 +70,13 @@ class PredictionResponse(BaseModel):
     graph_signals: dict[str, Any]
     as_of: str
     scored_at: str
+    explanation: ShapExplanation | None = None
 
 
 class BatchPredictionRequest(BaseModel):
     customer_ids: list[str] = Field(min_length=1)
     as_of: datetime
+    explain: bool = False
 
 
 class BatchPredictionResponse(BaseModel):
@@ -175,7 +193,7 @@ def _compute_as_of() -> str:
 
 # ── Core prediction endpoint ────────────────────────────────────────────────
 
-@app.post("/v1/predictions", response_model=PredictionResponse)
+@app.post("/v1/predictions", response_model=PredictionResponse, response_model_exclude_none=True)
 def predict(request: PredictionRequest) -> PredictionResponse:
     """Score one customer using the frozen group-aware XGBoost artifact."""
     try:
@@ -189,6 +207,7 @@ def predict(request: PredictionRequest) -> PredictionResponse:
             customer_payments=pd.DataFrame([row.model_dump() for row in request.customer_payments]),
             customer_ips=pd.DataFrame([row.model_dump() for row in request.customer_ips]),
             as_of=request.as_of,
+            include_explanation=request.explain,
         )
     except FileNotFoundError as exc:
         raise HTTPException(status_code=503, detail="ML model artifact unavailable") from exc
@@ -201,10 +220,10 @@ def predict(request: PredictionRequest) -> PredictionResponse:
 
 # ── Batch prediction endpoint ────────────────────────────────────────────────
 
-@app.post("/v1/predictions/batch", response_model=BatchPredictionResponse)
+@app.post("/v1/predictions/batch", response_model=BatchPredictionResponse, response_model_exclude_none=True)
 def predict_batch(request: BatchPredictionRequest) -> BatchPredictionResponse:
     """Score multiple customers in one request using the frozen XGBoost artifact."""
-    all_data = _load_all_data()
+    all_data = get_state()
     as_of_ts = pd.Timestamp(request.as_of)
 
     predictions = []
@@ -220,6 +239,7 @@ def predict_batch(request: BatchPredictionRequest) -> BatchPredictionResponse:
                 customer_payments=all_data["customer_payments"],
                 customer_ips=all_data["customer_ips"],
                 as_of=as_of_ts,
+                include_explanation=request.explain,
             )
             predictions.append(PredictionResponse.model_validate(result))
         except (ValueError, KeyError):
@@ -229,6 +249,33 @@ def predict_batch(request: BatchPredictionRequest) -> BatchPredictionResponse:
         predictions=predictions,
         scored_at=datetime.now(timezone.utc).isoformat(),
     )
+
+
+# ── Customer prediction GET endpoint ───────────────────────────────────────
+
+@app.get("/v1/predictions/{customer_id}", response_model=PredictionResponse, response_model_exclude_none=True)
+def get_prediction_for_customer(customer_id: str, as_of: str | None = None, explain: bool = False) -> PredictionResponse:
+    """Get prediction and optional SHAP explanation for a customer from in-memory state."""
+    all_data = get_state()
+    as_of_ts = pd.Timestamp(as_of) if as_of else pd.Timestamp(_compute_as_of())
+    try:
+        result = score_customer(
+            customer_id=customer_id,
+            customers=all_data["customers"],
+            orders=all_data["orders"],
+            offer_redemptions=all_data["offer_redemptions"],
+            customer_devices=all_data["customer_devices"],
+            customer_addresses=all_data["customer_addresses"],
+            customer_payments=all_data["customer_payments"],
+            customer_ips=all_data["customer_ips"],
+            as_of=as_of_ts,
+            include_explanation=explain,
+        )
+        return PredictionResponse.model_validate(result)
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Inference failed: {exc}") from exc
 
 
 # ── Event Ingestion endpoint ────────────────────────────────────────────────
