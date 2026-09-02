@@ -15,7 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from features.ingestion import load_raw_dataset, validate_and_clean_table
+from features.ingestion import REQUIRED_COLUMNS, load_raw_dataset, validate_and_clean_table
 from ml.inference import score_customer
 
 
@@ -94,18 +94,35 @@ def _load_all_data() -> dict[str, pd.DataFrame]:
     return _load_all_data_cached()
 
 
+import math
+
+
+def _clean_records(records: list[dict]) -> list[dict]:
+    cleaned = []
+    for r in records:
+        row = {}
+        for k, v in r.items():
+            if isinstance(v, float) and math.isnan(v):
+                row[k] = None
+            else:
+                row[k] = v
+        cleaned.append(row)
+    return cleaned
+
+
 def _records(filename: str) -> list[dict]:
     table_name = filename.replace(".csv", "")
     dataset = _load_all_data()
     if table_name in dataset and not dataset[table_name].empty:
-        return dataset[table_name].to_dict(orient="records")
-
-    path = DATA_DIR / filename
-    if not path.exists():
-        raise HTTPException(status_code=404, detail=f"Data file not found: {filename}")
-    df = pd.read_csv(path)
-    clean_df, _ = validate_and_clean_table(df, table_name)
-    return clean_df.to_dict(orient="records")
+        df = dataset[table_name]
+    else:
+        path = DATA_DIR / filename
+        if not path.exists():
+            raise HTTPException(status_code=404, detail=f"Data file not found: {filename}")
+        df = pd.read_csv(path)
+        if table_name in REQUIRED_COLUMNS:
+            df, _ = validate_and_clean_table(df, table_name)
+    return jsonable_encoder(_clean_records(df.to_dict(orient="records")))
 
 
 @lru_cache(maxsize=1)
@@ -316,8 +333,9 @@ def get_scored_customers():
     merged["predicted_label"] = merged["predicted_label"].fillna(0).astype(int)
     merged["cluster_size"] = merged["cluster_size"].fillna(1).astype(int)
     merged["unique_connected_customers"] = merged["unique_connected_customers"].fillna(0).astype(int)
+    merged_clean = merged.where(pd.notnull(merged), None)
 
-    return JSONResponse(jsonable_encoder(merged.to_dict(orient="records")))
+    return JSONResponse(jsonable_encoder(merged_clean.to_dict(orient="records")))
 
 
 # ── Graph / cluster endpoints ────────────────────────────────────────────────

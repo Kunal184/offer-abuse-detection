@@ -69,6 +69,73 @@ class BackendPredictionTest(unittest.TestCase):
         self.assertIn("unique_connected_customers", first)
         self.assertIn("created_at", first)
 
+    def test_all_data_endpoints(self):
+        client = TestClient(app)
+        data_endpoints = [
+            "/v1/data/customers",
+            "/v1/data/orders",
+            "/v1/data/redemptions",
+            "/v1/data/devices",
+            "/v1/data/addresses",
+            "/v1/data/payments",
+            "/v1/data/ips",
+            "/v1/data/features",
+            "/v1/data/ground-truth",
+        ]
+        for ep in data_endpoints:
+            res = client.get(ep)
+            self.assertEqual(res.status_code, 200, f"Endpoint {ep} failed with {res.status_code}")
+            data = res.json()
+            self.assertIsInstance(data, list)
+            self.assertGreater(len(data), 0)
+
+    def test_overview_endpoint(self):
+        res = TestClient(app).get("/v1/overview")
+        self.assertEqual(res.status_code, 200)
+        body = res.json()
+        self.assertIn("customersAnalyzed", body)
+        self.assertIn("customersFlagged", body)
+        self.assertIn("abuseClusters", body)
+        self.assertIn("riskDistribution", body)
+
+    def test_graph_and_clusters_endpoints(self):
+        client = TestClient(app)
+        res_g = client.get("/v1/graph")
+        self.assertEqual(res_g.status_code, 200)
+        self.assertIn("nodes", res_g.json())
+        self.assertIn("links", res_g.json())
+
+        res_c = client.get("/v1/clusters")
+        self.assertEqual(res_c.status_code, 200)
+        self.assertIn("clusters", res_c.json())
+
+    def test_analytics_endpoints(self):
+        client = TestClient(app)
+        res_m = client.get("/v1/analytics/metrics")
+        self.assertEqual(res_m.status_code, 200)
+        self.assertIn("f1", res_m.json())
+
+        res_fi = client.get("/v1/analytics/feature-importance")
+        self.assertEqual(res_fi.status_code, 200)
+        self.assertIsInstance(res_fi.json(), list)
+
+    def test_batch_prediction_endpoint(self):
+        customers = _records("customers.csv")
+        payload = {
+            "customer_ids": [c["customer_id"] for c in customers[:3]],
+            "as_of": "2026-09-01T00:00:00Z",
+        }
+        res = TestClient(app).post("/v1/predictions/batch", json=payload)
+        self.assertEqual(res.status_code, 200)
+        body = res.json()
+        self.assertIn("predictions", body)
+        self.assertEqual(len(body["predictions"]), 3)
+
+    def test_health_endpoint(self):
+        res = TestClient(app).get("/health")
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json(), {"status": "ok", "model": "xgboost_groupaware"})
+
 
 if __name__ == "__main__":
     unittest.main()
