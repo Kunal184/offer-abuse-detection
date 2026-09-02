@@ -244,6 +244,85 @@ class EventIngestionTest(unittest.TestCase):
                 g_dup = self.client.get("/v1/graph").json()
                 self.assertEqual(len(g_dup["links"]), len(g_after["links"]))
 
+    def test_8_live_event_ingestion_recomputes_customer_features_and_respects_as_of(self):
+        """Verify events recompute behavioral, redemption, and graph features and respect as_of timestamps."""
+        customers = pd.read_csv(DATA_DIR / "customers.csv")
+        c1 = str(customers.iloc[0]["customer_id"])
+
+        # 1. Behavioral Features (order event at 2026-09-02T18:00:00Z)
+        pred_before = self.client.post("/v1/predictions/batch", json={
+            "customer_ids": [c1],
+            "as_of": "2027-03-01T00:00:00Z",
+        }).json()["predictions"][0]["feature_snapshot"]
+
+        order_count_before = pred_before["order_count"]
+        total_spend_before = pred_before["total_spend"]
+
+        order_payload = {
+            "event_type": "order",
+            "data": {
+                "order_id": "ord_test_feat_888",
+                "customer_id": c1,
+                "amount": 750.0,
+                "timestamp": "2026-09-02T18:00:00Z",
+            },
+        }
+        res_order = self.client.post("/v1/events", json=order_payload)
+        self.assertEqual(res_order.status_code, 200)
+
+        pred_after_order = res_order.json()["prediction"]["feature_snapshot"]
+        self.assertEqual(pred_after_order["order_count"], order_count_before + 1)
+        self.assertAlmostEqual(pred_after_order["total_spend"], total_spend_before + 750.0, places=3)
+        self.assertAlmostEqual(pred_after_order["average_spend"], (total_spend_before + 750.0) / (order_count_before + 1), places=3)
+
+        # 2. Redemption Features (offer redemption event)
+        red_count_before = pred_after_order["redemption_count"]
+        red_rate_before = pred_after_order["order_redemption_rate"]
+
+        red_payload = {
+            "event_type": "offer_redemption",
+            "data": {
+                "redemption_id": "red_test_feat_888",
+                "customer_id": c1,
+                "order_id": "ord_test_feat_888",
+                "offer_id": "off_feat_10",
+                "timestamp": "2026-09-02T18:05:00Z",
+            },
+        }
+        res_red = self.client.post("/v1/events", json=red_payload)
+        self.assertEqual(res_red.status_code, 200)
+
+        pred_after_red = res_red.json()["prediction"]["feature_snapshot"]
+        self.assertEqual(pred_after_red["redemption_count"], red_count_before + 1)
+        self.assertGreater(pred_after_red["order_redemption_rate"], red_rate_before)
+
+        # 3. Graph Features (isolated customers sharing a device)
+        scored = self.client.get("/v1/data/scored-customers").json()
+        isolated = [c["customer_id"] for c in scored if c.get("cluster_size", 1) == 1]
+        c_iso1, c_iso2 = isolated[0], isolated[1]
+
+        dev_shared = "dev_shared_feat_888"
+        self.client.post("/v1/events", json={"event_type": "device", "data": {"customer_id": c_iso1, "device_id": dev_shared}})
+        res_dev2 = self.client.post("/v1/events", json={"event_type": "device", "data": {"customer_id": c_iso2, "device_id": dev_shared}})
+
+        snap_iso2 = res_dev2.json()["prediction"]["feature_snapshot"]
+        self.assertEqual(snap_iso2["max_device_user_count"], 2)
+        self.assertEqual(snap_iso2["unique_connected_customers"], 1)
+        self.assertEqual(snap_iso2["cluster_size"], 2)
+
+        # 4. Temporal as_of filtering check
+        snap_as_of_before = self.client.post("/v1/predictions/batch", json={
+            "customer_ids": [c1],
+            "as_of": "2026-09-02T17:50:00Z",
+        }).json()["predictions"][0]["feature_snapshot"]
+
+        snap_as_of_after = self.client.post("/v1/predictions/batch", json={
+            "customer_ids": [c1],
+            "as_of": "2027-03-01T00:00:00Z",
+        }).json()["predictions"][0]["feature_snapshot"]
+
+        self.assertLess(snap_as_of_before["order_count"], snap_as_of_after["order_count"])
+
 
 if __name__ == "__main__":
     unittest.main()
