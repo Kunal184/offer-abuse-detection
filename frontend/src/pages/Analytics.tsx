@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { loadMetrics, loadFeatureImportance } from '../api/client';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import SimpleBarChart from '../components/shared/SimpleBarChart';
 import type { ModelMetrics, FeatureImportance } from '../types/index';
 
 const CHART_COLORS = ['#D9391F', '#EF9F27', '#1D9E75', '#9BA3AB', '#8A8A88', '#5E5E5C'];
@@ -10,11 +10,17 @@ export default function AnalyticsPage() {
   const [featureImportance, setFeatureImportance] = useState<FeatureImportance[]>([]);
   const [loadingMetrics, setLoadingMetrics] = useState(true);
   const [loadingFeatures, setLoadingFeatures] = useState(true);
+  const [errorMetrics, setErrorMetrics] = useState<string | null>(null);
+  const [errorFeatures, setErrorFeatures] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoadingMetrics(true);
+    setErrorMetrics(null);
     loadMetrics()
       .then(setMetrics)
-      .catch(() => {
+      .catch((e: unknown) => {
+        setErrorMetrics(e instanceof Error ? e.message : String(e));
+        // Fallback to known baseline values so the page remains useful
         setMetrics({
           f1: 0.9351,
           precision: 0.9730,
@@ -26,9 +32,12 @@ export default function AnalyticsPage() {
       })
       .finally(() => setLoadingMetrics(false));
 
+    setLoadingFeatures(true);
+    setErrorFeatures(null);
     loadFeatureImportance()
       .then(setFeatureImportance)
-      .catch(() => {
+      .catch((e: unknown) => {
+        setErrorFeatures(e instanceof Error ? e.message : String(e));
         setFeatureImportance([
           { feature: 'average_spend', importance: 0.7220 },
           { feature: 'time_to_first_redemption_hours', importance: 0.1178 },
@@ -51,11 +60,25 @@ export default function AnalyticsPage() {
 
   const topFeatures = featureImportance.slice(0, 10);
 
+  const perfBarData = metrics
+    ? [
+        { name: 'Precision', value: metrics.precision, color: '#EF9F27' },
+        { name: 'Recall', value: metrics.recall, color: '#1D9E75' },
+        { name: 'F1', value: metrics.f1, color: '#D9391F' },
+        { name: 'ROC-AUC', value: metrics.rocAuc, color: '#9BA3AB' },
+      ]
+    : [];
+
   return (
     <div>
       <div style={{ marginBottom: 28 }}>
         <h1 style={{ fontSize: 24, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Analytics</h1>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Model performance and feature analysis</p>
+        {(errorMetrics || errorFeatures) && (
+          <p style={{ fontSize: 11, color: 'var(--risk-medium)', marginTop: 4, fontFamily: 'var(--font-mono)' }}>
+            ⚠ Using baseline values · {errorMetrics || errorFeatures}
+          </p>
+        )}
       </div>
 
       {/* Main metrics cards */}
@@ -112,29 +135,11 @@ export default function AnalyticsPage() {
         <div className="card">
           <div className="card-body">
             <h3 className="section-label">PERFORMANCE METRICS</h3>
-            <div style={{ height: 200 }}>
-              {metrics && (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={[
-                      { name: 'Precision', value: metrics.precision, color: '#EF9F27' },
-                      { name: 'Recall', value: metrics.recall, color: '#1D9E75' },
-                      { name: 'F1', value: metrics.f1, color: '#D9391F' },
-                      { name: 'ROC-AUC', value: metrics.rocAuc, color: '#9BA3AB' },
-                    ]}
-                    layout="vertical"
-                    barCategoryGap={8}
-                  >
-                    <XAxis type="number" domain={[0, 1]} tick={{ fill: '#8A8A88', fontSize: 10 }} tickFormatter={(v) => v.toFixed(2)} />
-                    <YAxis dataKey="name" type="category" tick={{ fill: '#8A8A88', fontSize: 11 }} width={70} />
-                    <Tooltip formatter={(v: any) => typeof v === 'number' ? v.toFixed(4) : v} />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                      {[0, 1, 2, 3].map((i) => (
-                        <Cell key={i} fill={['#EF9F27', '#1D9E75', '#D9391F', '#9BA3AB'][i]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+            <div style={{ height: 200, display: 'flex', alignItems: 'center' }}>
+              {loadingMetrics ? (
+                <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading...</span>
+              ) : (
+                <SimpleBarChart data={perfBarData} height={200} domain={[0, 1]} />
               )}
             </div>
           </div>

@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
 
 const NAV_ITEMS = [
@@ -34,6 +34,7 @@ const NAV_ITEMS = [
 
 export default function Shell() {
   const location = useLocation();
+  const navigate = useNavigate();
   const activeView = useAppStore((s) => s.activeView);
   const setActiveView = useAppStore((s) => s.setActiveView);
 
@@ -53,7 +54,7 @@ export default function Shell() {
                 className={`nav-item ${active ? 'active' : ''}`}
                 onClick={() => {
                   setActiveView(item.label.toLowerCase());
-                  window.location.href = item.path;
+                  navigate(item.path);
                 }}
               >
                 <span className="nav-icon">{item.icon}</span>

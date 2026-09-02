@@ -40,6 +40,23 @@ export async function loadCustomers(): Promise<CustomerRaw[]> {
   return apiGet<CustomerRaw[]>('/v1/data/customers');
 }
 
+/** Returns customers pre-joined with ML abuse scores (bulk vectorised call). */
+export async function loadScoredCustomers(): Promise<ScoredCustomer[]> {
+  return apiGet<ScoredCustomer[]>('/v1/data/scored-customers');
+}
+
+export interface ScoredCustomer {
+  customer_id: string;
+  name: string;
+  email: string;
+  phone: number;
+  created_at: string;
+  abuse_probability: number;
+  predicted_label: number;
+  cluster_size: number;
+  unique_connected_customers: number;
+}
+
 export async function loadOrders(): Promise<OrderRaw[]> {
   return apiGet<OrderRaw[]>('/v1/data/orders');
 }

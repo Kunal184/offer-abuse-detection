@@ -276,6 +276,50 @@ def get_overview():
     })
 
 
+# ── Scored customers (pre-computed, bulk) ──────────────────────────────────
+
+@app.get("/v1/data/scored-customers")
+def get_scored_customers():
+    """Return all customers joined with their pre-computed ML abuse scores.
+
+    Uses the frozen model to score all customers at once in one vectorised
+    call — safe and fast.  The frontend must use this instead of sending
+    1000 individual /v1/predictions requests.
+    """
+    import joblib
+    import numpy as np
+
+    customers_df = pd.read_csv(DATA_DIR / "customers.csv")
+    features = pd.read_csv(DATA_DIR / "customer_features.csv")
+
+    model = joblib.load(OUTPUTS_DIR / "model_xgboost_groupaware.joblib")
+    FEATURE_COLS = [
+        "account_age_days", "order_count", "total_spend", "average_spend",
+        "time_to_first_order_hours", "redemption_count", "time_to_first_redemption_hours",
+        "order_redemption_rate", "max_device_user_count", "max_address_user_count",
+        "max_payment_user_count", "max_ip_user_count", "unique_connected_customers",
+        "avg_entity_degree", "max_entity_degree", "cluster_size",
+    ]
+    X = features[FEATURE_COLS].to_numpy()
+    probabilities = model.predict_proba(X)[:, 1]
+    features = features.copy()
+    features["abuse_probability"] = probabilities
+    features["predicted_label"] = (probabilities >= 0.5).astype(int)
+
+    merged = customers_df.merge(
+        features[["customer_id", "abuse_probability", "predicted_label",
+                   "cluster_size", "unique_connected_customers"]],
+        on="customer_id",
+        how="left",
+    )
+    merged["abuse_probability"] = merged["abuse_probability"].fillna(0.0)
+    merged["predicted_label"] = merged["predicted_label"].fillna(0).astype(int)
+    merged["cluster_size"] = merged["cluster_size"].fillna(1).astype(int)
+    merged["unique_connected_customers"] = merged["unique_connected_customers"].fillna(0).astype(int)
+
+    return JSONResponse(merged.to_dict(orient="records"))
+
+
 # ── Graph / cluster endpoints ────────────────────────────────────────────────
 
 @app.get("/v1/graph")

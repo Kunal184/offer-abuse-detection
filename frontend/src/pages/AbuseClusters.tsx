@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { loadClusters, loadGraph } from '../api/client';
 import { useAppStore } from '../store/appStore';
 
@@ -9,26 +9,63 @@ export default function AbuseClustersPage() {
   const setGraph = useAppStore((s) => s.setGraph);
   const selectedCluster = useAppStore((s) => s.selectedCluster);
   const setSelectedCluster = useAppStore((s) => s.setSelectedCluster);
-  const loading = useAppStore((s) => s.loading.clusters);
+  const loadingClusters = useAppStore((s) => s.loading.clusters);
+  const loadingGraph = useAppStore((s) => s.loading.graph);
   const setLoading = useAppStore((s) => s.setLoading);
   const setError = useAppStore((s) => s.setError);
 
+  // Track local errors independently so a clusters failure doesn't erase graph data
+  const [clusterError, setClusterError] = useState<string | null>(null);
+  const [graphError, setGraphError] = useState<string | null>(null);
+
+  const initRef = useRef(false);
+
   useEffect(() => {
-    if (clusters.length === 0) {
+    if (initRef.current) return;
+    initRef.current = true;
+
+    const store = useAppStore.getState();
+
+    // Load clusters independently — a failure here must NOT clear graph data
+    if (store.clusters.length === 0) {
       setLoading('clusters', true);
-      Promise.all([loadClusters(), loadGraph()])
-        .then(([c, g]) => {
+      setClusterError(null);
+      loadClusters()
+        .then((c) => {
           setClusters(c.clusters || []);
+        })
+        .catch((e: unknown) => {
+          const msg = e instanceof Error ? e.message : String(e);
+          setClusterError(msg);
+          setError('clusters', msg);
+          // Do NOT call setClusters([]) — that would erase data loaded by Overview
+        })
+        .finally(() => setLoading('clusters', false));
+    }
+
+    // Load graph independently — a failure here must NOT clear cluster data
+    if (store.graphNodes.length === 0) {
+      setLoading('graph', true);
+      setGraphError(null);
+      loadGraph()
+        .then((g) => {
           setGraph(g.nodes, g.links);
         })
-        .catch((e) => setError('clusters', e.message))
-        .finally(() => setLoading('clusters', false));
+        .catch((e: unknown) => {
+          const msg = e instanceof Error ? e.message : String(e);
+          setGraphError(msg);
+          setError('graph', msg);
+          // Do NOT call setGraph([], []) — that clears what was successfully loaded
+        })
+        .finally(() => setLoading('graph', false));
     }
   }, []);
 
   const totalFlagged = clusters.reduce((a, c) => a + c.flaggedCustomerCount, 0);
   const totalCustomers = clusters.reduce((a, c) => a + c.customerCount, 0);
   const totalShared = clusters.reduce((a, c) => a + c.sharedEntities.reduce((s, e) => s + e.count, 0), 0);
+
+  const isLoadingAnything = loadingClusters || loadingGraph;
 
   return (
     <div>
@@ -48,7 +85,7 @@ export default function AbuseClustersPage() {
       <div className="verdict-card" style={{ marginBottom: 28 }}>
         <div className="verdict-card-label">COORDINATED ABUSE DETECTED</div>
         <div className="verdict-card-statement">
-          {loading ? '—' : `${clusters.length} CLUSTERS · ${totalFlagged} FLAGGED ACCOUNTS`}
+          {isLoadingAnything ? '—' : `${clusters.length} CLUSTERS · ${totalFlagged} FLAGGED ACCOUNTS`}
         </div>
         <div className="verdict-card-meta">
           {totalCustomers} customers · {totalShared} shared entities · graph-based detection
@@ -61,12 +98,26 @@ export default function AbuseClustersPage() {
           <div className="card-body">
             <h3 className="section-label" style={{ marginBottom: 16 }}>RELATIONSHIP GRAPH</h3>
             <div style={{ background: 'var(--bg-page)', borderRadius: 8, overflow: 'hidden', height: 480 }}>
-              {loading ? (
+              {loadingGraph ? (
                 <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading graph...</span>
                 </div>
+              ) : graphError && graphNodes.length === 0 ? (
+                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 8 }}>
+                  <span style={{ color: 'var(--risk-high)', fontSize: 12 }}>Graph unavailable</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{graphError}</span>
+                </div>
+              ) : graphNodes.length === 0 ? (
+                <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>No graph data</span>
+                </div>
               ) : (
-                <RelationshipGraph nodes={graphNodes.slice(0, 40)} clusters={clusters} />
+                // Key the graph on nodes length so it never remounts due to empty → loaded transitions
+                <RelationshipGraph
+                  key={`graph-${graphNodes.length}`}
+                  nodes={graphNodes.slice(0, 40)}
+                  clusters={clusters}
+                />
               )}
             </div>
             <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 12 }}>
@@ -79,13 +130,22 @@ export default function AbuseClustersPage() {
         <div className="card">
           <div className="card-body">
             <h3 className="section-label" style={{ marginBottom: 16 }}>CLUSTERS</h3>
-            {clusters.length === 0 ? (
+            {loadingClusters ? (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 100 }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>Loading clusters...</span>
+              </div>
+            ) : clusterError && clusters.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state-title" style={{ color: 'var(--risk-high)' }}>Error loading clusters</div>
+                <div className="empty-state-desc">{clusterError}</div>
+              </div>
+            ) : clusters.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-state-title">No clusters</div>
                 <div className="empty-state-desc">No coordinated abuse detected</div>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 480, overflowY: 'auto' }}>
                 {clusters.map((cluster) => (
                   <div
                     key={cluster.id}
@@ -188,26 +248,18 @@ function RelationshipGraph({ nodes, clusters }: { nodes: any[]; clusters: any[] 
   const innerR = 60, outerR = 150;
 
   customers.forEach((n, i) => {
-    const angle = (i / customers.length) * 2 * Math.PI - Math.PI / 2;
+    const angle = (i / Math.max(customers.length, 1)) * 2 * Math.PI - Math.PI / 2;
     const r = innerR + (i % 3) * 20;
     positions[n.id] = { x: cx + Math.cos(angle) * r, y: cy + Math.sin(angle) * r };
   });
 
   entities.forEach((n, i) => {
-    const angle = (i / entities.length) * 2 * Math.PI - Math.PI / 2;
+    const angle = (i / Math.max(entities.length, 1)) * 2 * Math.PI - Math.PI / 2;
     positions[n.id] = { x: cx + Math.cos(angle) * outerR, y: cy + Math.sin(angle) * outerR };
   });
 
   return (
     <svg viewBox="0 0 400 400" width="100%" height="100%" style={{ background: '#0A0A0A' }}>
-      {/* Edges */}
-      {nodes.slice(0, 30).map((n) => {
-        const pos = positions[n.id];
-        if (!pos) return null;
-        // Connect customer to nearest entities
-        return null;
-      })}
-
       {/* Nodes */}
       {nodes.slice(0, 40).map((n) => {
         const pos = positions[n.id] || { x: 200, y: 200 };
