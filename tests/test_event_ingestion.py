@@ -204,6 +204,46 @@ class EventIngestionTest(unittest.TestCase):
                 after_dup = self.client.get(ep).json()
                 self.assertEqual(len(after_dup), count_before + 1)
 
+    def test_7_relationship_events_update_graph_topology_and_features(self):
+        """Verify relationship events (device, address, payment, IP) update graph nodes, edges, graph endpoint, and features."""
+        customers = pd.read_csv(DATA_DIR / "customers.csv")
+        c1 = str(customers.iloc[0]["customer_id"])
+        c2 = str(customers.iloc[1]["customer_id"])
+
+        rel_events = [
+            ("device", "device_id", "dev_new_test_777", "device_dev_new_test_777"),
+            ("address", "address_id", "addr_new_test_777", "address_addr_new_test_777"),
+            ("payment", "payment_id", "pay_new_test_777", "payment_pay_new_test_777"),
+            ("ip", "ip_address", "192.168.99.77", "ip_192.168.99.77"),
+        ]
+
+        for etype, key_col, entity_val, expected_node_id in rel_events:
+            with self.subTest(relationship_type=etype):
+                g_before = self.client.get("/v1/graph").json()
+                links_before_count = len(g_before["links"])
+
+                # Ingest relationship event connecting c1 & c2 to new shared entity
+                res1 = self.client.post("/v1/events", json={"event_type": etype, "data": {"customer_id": c1, key_col: entity_val}})
+                self.assertEqual(res1.status_code, 200)
+
+                res2 = self.client.post("/v1/events", json={"event_type": etype, "data": {"customer_id": c2, key_col: entity_val}})
+                self.assertEqual(res2.status_code, 200)
+
+                # Verify graph endpoint contains new entity node and edges
+                g_after = self.client.get("/v1/graph").json()
+                node_ids = {n["id"] for n in g_after["nodes"]}
+                edges = {(l["source"], l["target"]) for l in g_after["links"]}
+
+                self.assertIn(expected_node_id, node_ids)
+                self.assertTrue((f"c_{c1}", expected_node_id) in edges or (expected_node_id, f"c_{c1}") in edges)
+                self.assertTrue((f"c_{c2}", expected_node_id) in edges or (expected_node_id, f"c_{c2}") in edges)
+
+                # Duplicate relationship event check
+                res_dup = self.client.post("/v1/events", json={"event_type": etype, "data": {"customer_id": c1, key_col: entity_val}})
+                self.assertTrue(res_dup.json()["is_duplicate"])
+                g_dup = self.client.get("/v1/graph").json()
+                self.assertEqual(len(g_dup["links"]), len(g_after["links"]))
+
 
 if __name__ == "__main__":
     unittest.main()
