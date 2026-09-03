@@ -76,7 +76,6 @@ export default function AbuseClustersPage() {
 
       {/* Verdict finding strip */}
       <div className="clusters-verdict-card">
-        <div className="clusters-verdict-badge">GRAPH ENGINE ACTIVE</div>
         <div className="clusters-verdict-label">COORDINATED ABUSE DETECTED</div>
         <div className="clusters-verdict-statement">
           {isLoadingAnything ? '—' : `${clusters.length} CLUSTERS DETECTED · ${totalFlagged} FLAGGED ACCOUNTS`}

@@ -15,30 +15,29 @@
 }
 
 .clusters-title {
-  font-family: 'League Gothic', 'Bebas Neue', sans-serif;
-  font-size: 3.5rem;
-  font-weight: 400;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1.5rem;
+  font-weight: 700;
   color: #FAFAF8;
-  letter-spacing: 0.02em;
-  line-height: 0.9;
-  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
   margin: 0;
 }
 
 .clusters-subtitle {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   color: var(--text-secondary);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  margin-top: 0.4rem;
+  margin-top: 0.35rem;
 }
 
 .clusters-verdict-card {
-  background: #111215;
-  border: 1px solid rgba(229, 52, 28, 0.35);
-  padding: 2rem 2.5rem;
-  margin-bottom: 2.5rem;
+  background: #141414;
+  border: 1px solid rgba(229, 52, 28, 0.4);
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 2rem;
   position: relative;
 }
 
@@ -56,29 +55,30 @@
 }
 
 .clusters-verdict-label {
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: 0.75rem;
-  font-weight: 800;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
   color: #E5341C;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: 0.5rem;
 }
 
 .clusters-verdict-statement {
-  font-family: 'League Gothic', 'Bebas Neue', sans-serif;
-  font-size: clamp(2.5rem, 5vw, 4.5rem);
-  line-height: 0.85;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.25;
   color: #FAFAF8;
-  text-transform: uppercase;
   margin-bottom: 0.5rem;
+  letter-spacing: -0.01em;
 }
 
 .clusters-verdict-meta {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.8rem;
-  color: rgba(250, 250, 248, 0.7);
-  letter-spacing: 0.05em;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
 }
 
 .clusters-grid {

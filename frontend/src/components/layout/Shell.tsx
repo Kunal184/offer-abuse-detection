@@ -84,10 +84,6 @@ function TopBar() {
       <div className="topbar-title">
         <strong>Acme Retail</strong> · Merchant Operations
       </div>
-      <div className="topbar-status">
-        <span className="status-dot" style={{ background: 'var(--risk-low)' }}></span>
-        System Active
-      </div>
     </header>
   );
 }
