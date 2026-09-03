@@ -1,4 +1,4 @@
-/* Editorial Overview Dashboard Styling */
+/* Pitch-Dark Monochrome Editorial Overview Dashboard */
 .overview-container {
   width: 100%;
   color: #FAFAF8;
@@ -10,28 +10,27 @@
   justify-content: space-between;
   align-items: flex-end;
   margin-bottom: 2rem;
-  border-bottom: 1px solid rgba(244, 243, 238, 0.12);
+  border-bottom: 1px solid var(--border);
   padding-bottom: 1.5rem;
 }
 
 .overview-title {
-  font-family: 'League Gothic', 'Bebas Neue', sans-serif;
-  font-size: 3.5rem;
-  font-weight: 400;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1.75rem;
+  font-weight: 700;
   color: #FAFAF8;
-  letter-spacing: 0.02em;
-  line-height: 0.9;
-  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
   margin: 0;
 }
 
 .overview-subtitle {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   color: var(--text-secondary);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  margin-top: 0.4rem;
+  margin-top: 0.35rem;
 }
 
 .overview-status-tag {
@@ -39,7 +38,7 @@
   font-size: 0.75rem;
   font-weight: 700;
   color: #E5341C;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   background: rgba(229, 52, 28, 0.1);
   border: 1px solid rgba(229, 52, 28, 0.35);
@@ -59,12 +58,13 @@
 
 /* System Verdict Banner */
 .overview-verdict-banner {
-  background: #111215;
-  border: 1px solid rgba(229, 52, 28, 0.35);
-  padding: 2.5rem 3rem;
+  background: #141414;
+  border: 1px solid rgba(229, 52, 28, 0.4);
+  padding: 2.25rem 2.5rem;
   margin-bottom: 2.5rem;
   position: relative;
   cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
   transition: border-color 0.2s ease, transform 0.2s ease;
 }
 
@@ -74,67 +74,68 @@
 }
 
 .verdict-tag {
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: 0.8rem;
-  font-weight: 800;
-  color: #E5341C;
-  letter-spacing: 0.18em;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   margin-bottom: 0.75rem;
 }
 
 .verdict-headline {
-  font-family: 'League Gothic', 'Bebas Neue', sans-serif;
-  font-size: clamp(3rem, 6vw, 6.5rem);
-  line-height: 0.85;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.25;
   color: #FAFAF8;
-  text-transform: uppercase;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.4rem;
   letter-spacing: -0.01em;
 }
 
 .verdict-exposure {
-  font-family: 'League Gothic', 'Bebas Neue', sans-serif;
-  font-size: clamp(2.2rem, 4.5vw, 4.2rem);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1.4rem;
+  font-weight: 800;
   color: #E5341C;
-  text-transform: uppercase;
-  margin-bottom: 1.25rem;
-  line-height: 0.9;
+  margin-bottom: 1rem;
+  line-height: 1.2;
 }
 
 .verdict-meta {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.82rem;
-  color: rgba(250, 250, 248, 0.7);
-  letter-spacing: 0.05em;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.04em;
 }
 
 .verdict-tape-badge {
   position: absolute;
-  top: 1.75rem;
-  right: 2.5rem;
+  top: 1.5rem;
+  right: 2.25rem;
   background: #E5341C;
-  color: #F4F3EE;
-  font-family: 'League Gothic', 'Bebas Neue', sans-serif;
-  font-size: 1.35rem;
-  letter-spacing: 0.1em;
-  padding: 0.35rem 1.1rem;
-  transform: rotate(-2.5deg);
-  box-shadow: 0 6px 16px rgba(0,0,0,0.5);
+  color: #FAFAF8;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 0.35rem 0.9rem;
+  transform: rotate(-1.5deg);
+  box-shadow: 0 4px 12px rgba(229, 52, 28, 0.3);
 }
 
 /* KPI Quad Grid */
 .overview-kpi-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  border: 1px solid rgba(244, 243, 238, 0.12);
-  background: #111215;
+  border: 1px solid var(--border);
+  background: #141414;
   margin-bottom: 2.5rem;
 }
 
 .kpi-quad {
-  padding: 2.25rem 2rem;
-  border-right: 1px solid rgba(244, 243, 238, 0.12);
+  padding: 1.75rem 1.5rem;
+  border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -146,19 +147,21 @@
 
 .kpi-quad-label {
   font-family: 'Inter', system-ui, sans-serif;
-  font-size: 0.75rem;
-  font-weight: 800;
-  color: rgba(250, 250, 248, 0.6);
-  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  margin-bottom: 1.25rem;
+  margin-bottom: 1rem;
 }
 
 .kpi-quad-val {
-  font-family: 'League Gothic', 'Bebas Neue', sans-serif;
-  font-size: clamp(3rem, 4.5vw, 4.8rem);
-  line-height: 0.85;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 2.1rem;
+  font-weight: 700;
+  line-height: 1.1;
   color: #FAFAF8;
+  letter-spacing: -0.02em;
 }
 
 .kpi-quad-val.highlight-red {
@@ -167,8 +170,8 @@
 
 .kpi-quad-sub {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.78rem;
-  color: var(--text-secondary);
+  font-size: 0.75rem;
+  color: var(--text-muted);
   margin-top: 0.5rem;
 }
 
@@ -176,67 +179,68 @@
 .overview-bottom-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2rem;
+  gap: 1.5rem;
 }
 
 .editorial-card {
-  background: #111215;
-  border: 1px solid rgba(244, 243, 238, 0.12);
-  padding: 2rem 2.5rem;
+  background: #141414;
+  border: 1px solid var(--border);
+  padding: 1.75rem 2rem;
 }
 
 .editorial-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
-  border-bottom: 1px solid rgba(244, 243, 238, 0.1);
-  padding-bottom: 0.85rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0.75rem;
 }
 
 .editorial-card-title {
   font-family: 'Inter', system-ui, sans-serif;
-  font-size: 0.85rem;
-  font-weight: 800;
-  color: #E5341C;
-  letter-spacing: 0.15em;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #FAFAF8;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .editorial-btn-action {
   font-family: 'Inter', system-ui, sans-serif;
-  font-size: 0.8rem;
-  font-weight: 700;
-  color: #FAFAF8;
-  letter-spacing: 0.08em;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #E5341C;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   background: none;
   border: none;
   cursor: pointer;
-  transition: color 0.2s ease;
+  transition: opacity 0.2s ease;
 }
 
 .editorial-btn-action:hover {
-  color: #E5341C;
+  opacity: 0.8;
 }
 
 .cluster-stat-box {
   display: flex;
-  gap: 2rem;
+  gap: 1.75rem;
   margin-bottom: 1.25rem;
 }
 
 .cluster-stat-num {
-  font-family: 'League Gothic', 'Bebas Neue', sans-serif;
-  font-size: 2.8rem;
-  line-height: 0.85;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  line-height: 1;
   color: #E5341C;
 }
 
 .cluster-stat-lbl {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.72rem;
-  color: rgba(250, 250, 248, 0.6);
+  color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin-top: 0.3rem;
@@ -245,24 +249,12 @@
 .entity-pill {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.75rem;
-  font-weight: 600;
-  color: #F4F3EE;
-  background: rgba(229, 52, 28, 0.12);
-  border: 1px solid rgba(229, 52, 28, 0.3);
-  padding: 0.3rem 0.7rem;
+  font-weight: 500;
+  color: #FAFAF8;
+  background: #1A1A1A;
+  border: 1px solid var(--border);
+  padding: 0.35rem 0.75rem;
   display: inline-block;
   margin-right: 0.5rem;
   margin-bottom: 0.5rem;
-}
-
-@media (max-width: 992px) {
-  .overview-kpi-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-  .kpi-quad {
-    border-bottom: 1px solid rgba(244, 243, 238, 0.12);
-  }
-  .overview-bottom-grid {
-    grid-template-columns: 1fr;
-  }
 }
