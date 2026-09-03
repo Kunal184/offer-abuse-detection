@@ -699,8 +699,8 @@ def get_graph():
             type="customer",
             name=row.get("name", cid),
             email=row.get("email", ""),
-            is_flagged=prob >= 0.50,
-            abuse_probability=prob,
+            is_flagged=bool(prob >= 0.50),
+            abuse_probability=float(prob),
         )
 
     rel_configs = [
@@ -733,7 +733,7 @@ def get_graph():
     for u, v, d in G.edges(data=True):
         links.append({"source": u, "target": v, "type": d.get("relationship", "linked")})
 
-    return JSONResponse({"nodes": nodes, "links": links})
+    return JSONResponse(jsonable_encoder({"nodes": nodes, "links": links}))
 
 
 @app.get("/v1/clusters")
@@ -758,8 +758,8 @@ def get_clusters():
             type="customer",
             name=row.get("name", cid),
             email=row.get("email", ""),
-            is_flagged=prob >= 0.50,
-            abuse_probability=prob,
+            is_flagged=bool(prob >= 0.50),
+            abuse_probability=float(prob),
         )
 
     rel_configs = [
@@ -813,7 +813,7 @@ def get_clusters():
         comp_idx += 1
 
     clusters_list.sort(key=lambda c: c["maxProbability"], reverse=True)
-    return JSONResponse({"clusters": clusters_list})
+    return JSONResponse(jsonable_encoder({"clusters": clusters_list}))
 
 
 # ── Analytics Endpoints ──────────────────────────────────────────────────────
