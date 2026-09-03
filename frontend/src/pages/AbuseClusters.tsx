@@ -216,7 +216,7 @@ export default function AbuseClustersPage() {
                           <div>
                             <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Member Accounts</div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                              {cluster.customers.slice(0, 8).map((c: string) => (
+                              {(cluster.customers || cluster.customerIds || []).slice(0, 8).map((c: string) => (
                                 <span key={c} className="mono" style={{ fontSize: 10, color: 'var(--text-secondary)', background: '#0A0A0A', padding: '2px 6px', borderRadius: 3, border: '1px solid #242422' }}>
                                   {c.slice(0, 8)}…
                                 </span>
@@ -280,8 +280,8 @@ function ForceRelationshipGraph({
   const flaggedIds = useMemo(() => {
     const set = new Set<string>();
     clusters.forEach((c) => {
-      if (c.overallRisk === 'high') {
-        c.customers.forEach((id: string) => set.add(`c_${id}`));
+      if (c.overallRisk === 'high' || (c.maxProbability && c.maxProbability >= 0.5)) {
+        (c.customers || c.customerIds || []).forEach((id: string) => set.add(id));
       }
     });
     return set;
@@ -289,19 +289,17 @@ function ForceRelationshipGraph({
 
   // Extract relevant subgraph for simulation
   const { subNodes, subLinks } = useMemo(() => {
-    let targetNodeIds: Set<string>;
+    let targetNodeIds = new Set<string>();
 
     if (selectedCluster) {
-      targetNodeIds = new Set<string>();
-      selectedCluster.customers.forEach((cid: string) => targetNodeIds.add(`c_${cid}`));
-      selectedCluster.entities.forEach((eid: string) => targetNodeIds.add(eid));
+      (selectedCluster.customers || selectedCluster.customerIds || []).forEach((cid: string) => targetNodeIds.add(cid));
+      (selectedCluster.entities || []).forEach((eid: string) => targetNodeIds.add(eid));
     } else {
       // Show nodes from top clusters
-      targetNodeIds = new Set<string>();
       const topClusters = clusters.slice(0, 8);
       topClusters.forEach((c) => {
-        c.customers.forEach((cid: string) => targetNodeIds.add(`c_${cid}`));
-        c.entities.forEach((eid: string) => targetNodeIds.add(eid));
+        (c.customers || c.customerIds || []).forEach((cid: string) => targetNodeIds.add(cid));
+        (c.entities || []).forEach((eid: string) => targetNodeIds.add(eid));
       });
       // Fallback if no clusters
       if (targetNodeIds.size === 0) {
@@ -316,7 +314,11 @@ function ForceRelationshipGraph({
     const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
 
     const filteredLinks: GraphLinkItem[] = links
-      .filter((l) => filteredNodeIds.has(l.source) && filteredNodeIds.has(l.target))
+      .filter((l) => {
+        const s = typeof l.source === 'object' ? l.source.id : l.source;
+        const t = typeof l.target === 'object' ? l.target.id : l.target;
+        return filteredNodeIds.has(s) && filteredNodeIds.has(t);
+      })
       .map((l) => ({ ...l }));
 
     return { subNodes: filteredNodes, subLinks: filteredLinks };

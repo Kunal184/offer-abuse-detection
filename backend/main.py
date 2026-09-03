@@ -801,14 +801,20 @@ def get_clusters():
             e_type = G.nodes[ent].get("type", "entity")
             shared_summary.append({"type": e_type, "count": len(list(G.neighbors(ent)))})
 
+        max_p = float(max([G.nodes[n].get("abuse_probability", 0.0) for n in cust_nodes]))
+        overall_risk = "high" if max_p >= 0.70 else ("medium" if max_p >= 0.30 else "clear")
+
         clusters_list.append({
             "id": f"cluster_{comp_idx}",
             "name": f"Abuse Ring #{comp_idx}",
             "customerCount": len(cust_nodes),
             "flaggedCustomerCount": len(flagged),
             "customerIds": cust_nodes,
+            "customers": cust_nodes,
+            "entities": entities,
             "sharedEntities": shared_summary,
-            "maxProbability": float(max([G.nodes[n].get("abuse_probability", 0.0) for n in cust_nodes])),
+            "maxProbability": max_p,
+            "overallRisk": overall_risk,
         })
         comp_idx += 1
 
