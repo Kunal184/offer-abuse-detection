@@ -38,9 +38,8 @@ export default function ActivityPage() {
           <h1 className="activity-title">LIVE ACTIVITY STREAM</h1>
           <p className="activity-subtitle">REAL-TIME SSE EVENT MONITORING & INGESTION</p>
         </div>
-        <div className="badge-tape-group">
-          <span className="badge-tape-high">{events.length} EVENTS</span>
-          <span className="badge-tape-clear">LIVE SSE STREAM</span>
+        <div className="header-meta-pipe">
+          {events.length} EVENTS | LIVE SSE STREAM
         </div>
       </div>
 

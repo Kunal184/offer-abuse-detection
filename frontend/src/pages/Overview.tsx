@@ -51,8 +51,8 @@ export default function OverviewPage() {
   const pieData = riskDist
     ? [
         { name: 'High Risk', value: riskDist.high, color: '#E5341C' },
-        { name: 'Medium Watch', value: riskDist.medium, color: '#5E5E5C' },
-        { name: 'Clear', value: riskDist.clear, color: '#242422' },
+        { name: 'Medium Watch', value: riskDist.medium, color: '#EF9F27' },
+        { name: 'Clear', value: riskDist.clear, color: '#1D9E75' },
       ]
     : [];
 

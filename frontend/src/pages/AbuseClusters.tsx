@@ -67,10 +67,8 @@ export default function AbuseClustersPage() {
           <h1 className="clusters-title">ABUSE CLUSTER INVESTIGATION</h1>
           <p className="clusters-subtitle">COORDINATED NETWORK GRAPH & ENTITY RECONSTRUCTION</p>
         </div>
-        <div className="badge-tape-group">
-          <span className="badge-tape-high">{clusters.length} CLUSTERS</span>
-          <span className="badge-tape-high">{totalFlagged} FLAGGED ACCOUNTS</span>
-          <span className="badge-tape-medium">{totalShared} SHARED ENTITIES</span>
+        <div className="header-meta-pipe">
+          {clusters.length} CLUSTERS | {totalFlagged} FLAGGED ACCOUNTS | {totalShared} SHARED ENTITIES
         </div>
       </div>
 

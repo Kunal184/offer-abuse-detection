@@ -224,6 +224,15 @@ h3 {
   font-weight: 600;
 }
 
+.header-meta-pipe {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #FAFAF8;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .topbar-status {
   margin-left: auto;
   display: flex;

@@ -111,10 +111,8 @@ export default function CustomersPage() {
               : `${customers.length} CUSTOMER IDENTITIES ANALYZED`}
           </p>
         </div>
-        <div className="badge-tape-group">
-          <span className="badge-tape-high">{flaggedCount} FLAGGED</span>
-          <span className="badge-tape-medium">{watchCount} WATCH</span>
-          <span className="badge-tape-clear">{clearCount} CLEAR</span>
+        <div className="header-meta-pipe">
+          {flaggedCount} FLAGGED | {watchCount} WATCH | {clearCount} CLEAR
         </div>
       </div>
 
