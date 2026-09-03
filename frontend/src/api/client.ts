@@ -164,10 +164,14 @@ export async function loadCustomerPrediction(customerId: string, explain = true)
   return apiGet<PredictionResponse>(`/v1/predictions/${customerId}?explain=${explain}`);
 }
 
-/* ─── Overview ────────────────────────────────────────────────── */
+/* ─── Overview & Activity ────────────────────────────────────────── */
 
 export async function loadOverview(): Promise<OverviewStats> {
   return apiGet<OverviewStats>('/v1/overview');
+}
+
+export async function loadActivityFeed(): Promise<import('../types').ActivityEvent[]> {
+  return apiGet<import('../types').ActivityEvent[]>('/v1/activity/feed');
 }
 
 /* ─── Graph & Clusters ─────────────────────────────────────────── */

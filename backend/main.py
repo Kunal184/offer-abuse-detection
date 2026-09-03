@@ -159,6 +159,15 @@ def _get_model() -> Any:
     return joblib.load(OUTPUTS_DIR / "model_xgboost_groupaware.joblib")
 
 
+@lru_cache(maxsize=1)
+def _get_scaler() -> Any:
+    import joblib
+    scaler_path = OUTPUTS_DIR / "scaler_groupaware.joblib"
+    if scaler_path.exists():
+        return joblib.load(scaler_path)
+    return None
+
+
 def _load_all_data() -> dict[str, pd.DataFrame]:
     return get_state()
 
@@ -205,7 +214,7 @@ def _compute_as_of() -> str:
 
     if not timestamps:
         return datetime.now(timezone.utc).isoformat()
-    return pd.to_datetime(timestamps).max().isoformat()
+    return pd.to_datetime(timestamps, utc=True).max().isoformat()
 
 
 # ── Full Recompute & Score Diffing Engine ─────────────────────────────────────
@@ -236,7 +245,10 @@ def _run_full_recompute_and_emit_events(
 
     # 2. Re-score all customers through frozen XGBoost model
     model = _get_model()
+    scaler = _get_scaler()
     X = features[list(FEATURE_COLUMNS)].to_numpy()
+    if scaler is not None:
+        X = scaler.transform(X)
     probabilities = model.predict_proba(X)[:, 1]
 
     customer_ids = features["customer_id"].tolist()
@@ -251,7 +263,6 @@ def _run_full_recompute_and_emit_events(
             prev_prob = _SCORED_CUSTOMERS_CACHE.get(cid)
             if prev_prob is None:
                 # Newly ingested customer
-                prev_risk = "UNKNOWN"
                 new_risk = _get_risk_category(new_prob)
                 if new_risk == "HIGH RISK":
                     event_emitted = True
@@ -308,6 +319,7 @@ def _run_full_recompute_and_emit_events(
     _SCORED_CUSTOMERS_CACHE = new_scores
 
     # 4. Single-source computation of Overview statistics from this recompute pass
+    import numpy as np
     total_analyzed = len(probabilities)
     flagged_mask = probabilities >= 0.50
     flagged_count = int(flagged_mask.sum())

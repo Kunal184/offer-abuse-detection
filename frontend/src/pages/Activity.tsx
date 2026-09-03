@@ -1,17 +1,27 @@
 import { useEffect } from 'react';
 import { useAppStore } from '../store/appStore';
-import { connectEventStream } from '../api/client';
+import { connectEventStream, loadActivityFeed } from '../api/client';
 import './Activity.css';
 
 export default function ActivityPage() {
   const events = useAppStore((s) => s.activityEvents);
+  const setActivity = useAppStore((s) => s.setActivityEvents);
   const appendActivity = useAppStore((s) => s.appendActivity);
   const loading = useAppStore((s) => s.loading.activity);
   const setLoading = useAppStore((s) => s.setLoading);
 
   useEffect(() => {
-    setLoading('activity', false);
+    setLoading('activity', true);
 
+    // Initial fetch of activity log
+    loadActivityFeed()
+      .then((feed) => {
+        setActivity(feed);
+      })
+      .catch(() => {})
+      .finally(() => setLoading('activity', false));
+
+    // Connect to live SSE stream for real-time incoming events
     const disconnectStream = connectEventStream((newEvent) => {
       appendActivity([newEvent]);
     });
@@ -19,13 +29,13 @@ export default function ActivityPage() {
     return () => {
       disconnectStream();
     };
-  }, [appendActivity, setLoading]);
+  }, [setActivity, appendActivity, setLoading]);
 
   if (loading && events.length === 0) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 500, padding: 40 }}>
         <div style={{ color: '#E5341C', fontSize: 14, fontFamily: 'JetBrains Mono, monospace' }}>
-          CONNECTING TO LIVE SSE EVENT STREAM...
+          LOADING ACTIVITY LOG FEED...
         </div>
       </div>
     );
@@ -36,7 +46,7 @@ export default function ActivityPage() {
       <div className="activity-header">
         <div>
           <h1 className="activity-title">LIVE ACTIVITY STREAM</h1>
-          <p className="activity-subtitle">REAL-TIME SSE EVENT MONITORING & INGESTION</p>
+          <p className="activity-subtitle">REAL-TIME WEBHOOK EVENT MONITORING & INGESTION</p>
         </div>
         <div className="header-meta-pipe">
           {events.length} EVENTS | LIVE SSE STREAM
@@ -46,7 +56,7 @@ export default function ActivityPage() {
       <div className="activity-feed-card">
         {events.length === 0 ? (
           <div style={{ color: 'rgba(250,250,248,0.5)', fontSize: 13, fontFamily: 'JetBrains Mono, monospace', padding: '32px 0', textTransform: 'uppercase' }}>
-            LISTENING FOR INCOMING MERCHANT EVENTS...
+            LISTENING FOR INCOMING MERCHANT WEBHOOK EVENTS...
           </div>
         ) : (
           events.map((event) => {
