@@ -78,16 +78,10 @@ export default function OverviewPage() {
           <h1 className="overview-title">SYSTEM OVERVIEW</h1>
           <p className="overview-subtitle">Real-time graph intelligence & offer abuse detection</p>
         </div>
-        <div className="overview-status-tag">
-          <span className="pulse-dot"></span>
-          SCANNING · {loading.overview ? '...' : (overview?.customersAnalyzed ?? '0')} CUSTOMERS ANALYZED
-        </div>
       </div>
 
       {/* Hero System Verdict Banner */}
       <div className="overview-verdict-banner" onClick={() => navigate('/clusters')}>
-        <div className="verdict-tape-badge">33 CLUSTERS DETECTED</div>
-        <div className="verdict-tag">SYSTEM FINDING</div>
         <h2 className="verdict-headline">
           {loading.overview ? 'ANALYZING...' : (overview ? `${overview.abuseClusters} ABUSE RINGS DETECTED` : '—')}
         </h2>
