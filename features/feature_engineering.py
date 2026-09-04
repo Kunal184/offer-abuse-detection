@@ -14,7 +14,6 @@ FEATURE_COLUMNS = (
     "order_count",
     "total_spend",
     "spend_to_discount_ratio",
-    "order_amount_std",
     "time_to_first_order_hours",
     "redemption_count",
     "time_to_first_redemption_hours",
