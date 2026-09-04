@@ -45,6 +45,8 @@ FEATURE_COLUMNS = (
     "max_entity_degree",
     "cluster_size",
     "cluster_creation_span_hours",
+    "cluster_redemptions_1h",
+    "min_account_creation_delta_minutes",
 )
 
 GRAPH_SIGNAL_COLUMNS = (

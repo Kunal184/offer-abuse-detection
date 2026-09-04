@@ -29,6 +29,8 @@ FEATURE_COLUMNS = (
     "max_entity_degree",
     "cluster_size",
     "cluster_creation_span_hours",
+    "cluster_redemptions_1h",
+    "min_account_creation_delta_minutes",
 )
 
 
@@ -240,6 +242,12 @@ def build_feature_matrix(
 
     cust_created_map = customers.set_index("customer_id")["created_at"].to_dict()
 
+    # Pre-map redemptions per customer for cluster redemption velocity
+    cust_red_timestamps = {}
+    if not offer_redemptions.empty:
+        for cid, group in offer_redemptions.groupby("customer_id"):
+            cust_red_timestamps[str(cid)] = list(pd.to_datetime(group["timestamp"]))
+
     for comp in components:
         comp_cust_ids = [str(n)[2:] for n in comp if str(n).startswith("c_")]
         cust_count = len(comp_cust_ids)
@@ -261,6 +269,7 @@ def build_feature_matrix(
     graph_features = []
     for cid in customers["customer_id"]:
         c_node = f"c_{cid}"
+        c_created_at = cust_created_map.get(cid)
 
         device_degrees = [G.degree(nbr) for nbr in G.neighbors(c_node) if str(nbr).startswith("device_")]
         address_degrees = [G.degree(nbr) for nbr in G.neighbors(c_node) if str(nbr).startswith("address_")]
@@ -279,6 +288,40 @@ def build_feature_matrix(
                 if nbr_c != c_node and str(nbr_c).startswith("c_"):
                     two_hop_customers.add(nbr_c)
         unique_connected_customers = len(two_hop_customers)
+
+        # Minimum creation delta to connected accounts in cluster (minutes)
+        if two_hop_customers and pd.notnull(c_created_at):
+            other_creation_deltas = []
+            for nbr_c in two_hop_customers:
+                other_cid = nbr_c[2:]
+                other_t = cust_created_map.get(other_cid)
+                if pd.notnull(other_t):
+                    delta_m = abs((c_created_at - other_t).total_seconds()) / 60.0
+                    other_creation_deltas.append(delta_m)
+            min_account_creation_delta_minutes = min(other_creation_deltas) if other_creation_deltas else -1.0
+        else:
+            min_account_creation_delta_minutes = -1.0
+
+        # Cluster Redemption Burst Velocity (max redemptions in 1h window across cluster)
+        all_cluster_cids = {cid} | {nbr_c[2:] for nbr_c in two_hop_customers}
+        cluster_red_ts = []
+        for cl_cid in all_cluster_cids:
+            cluster_red_ts.extend(cust_red_timestamps.get(cl_cid, []))
+
+        if len(cluster_red_ts) > 1:
+            sorted_ts = sorted(cluster_red_ts)
+            # Find maximum redemptions within any 1-hour window
+            max_burst = 1
+            l_idx = 0
+            for r_idx in range(len(sorted_ts)):
+                while (sorted_ts[r_idx] - sorted_ts[l_idx]).total_seconds() > 3600:
+                    l_idx += 1
+                max_burst = max(max_burst, r_idx - l_idx + 1)
+            cluster_redemptions_1h = max_burst
+        elif len(cluster_red_ts) == 1:
+            cluster_redemptions_1h = 1
+        else:
+            cluster_redemptions_1h = 0
 
         all_entity_degrees = [G.degree(ent) for ent in neighbors]
         avg_entity_degree = float(np.mean(all_entity_degrees)) if all_entity_degrees else 0.0
@@ -302,6 +345,8 @@ def build_feature_matrix(
             "max_entity_degree": max_entity_degree,
             "cluster_size": cluster_size,
             "cluster_creation_span_hours": cluster_creation_span_hours,
+            "cluster_redemptions_1h": cluster_redemptions_1h,
+            "min_account_creation_delta_minutes": min_account_creation_delta_minutes,
         })
 
     df_graph_features = pd.DataFrame(graph_features)

@@ -38,6 +38,7 @@ class InferenceTest(unittest.TestCase):
         self.assertEqual(result["model_name"], "xgboost_groupaware")
         self.assertEqual(tuple(result["feature_snapshot"]), FEATURE_COLUMNS)
         self.assertEqual(len(result["graph_signals"]), 10)
+        self.assertEqual(len(result["feature_snapshot"]), 21)
 
 
 if __name__ == "__main__":

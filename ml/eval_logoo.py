@@ -43,6 +43,7 @@ FEATURE_SET_C = [
     "max_address_user_count", "max_payment_user_count", "max_ip_user_count",
     "unique_connected_customers", "shared_entity_ratio", "avg_entity_degree",
     "max_entity_degree", "cluster_size", "cluster_creation_span_hours",
+    "cluster_redemptions_1h", "min_account_creation_delta_minutes",
 ]
 
 
