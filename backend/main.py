@@ -22,6 +22,16 @@ from pydantic import BaseModel, ConfigDict, Field
 from features.feature_engineering import FEATURE_COLUMNS, build_feature_matrix
 from features.ingestion import REQUIRED_COLUMNS, load_raw_dataset, validate_and_clean_table
 from ml.inference import score_customer
+from backend.database import (
+    seed_database,
+    load_dataset_from_db,
+    insert_customer,
+    insert_order,
+    insert_offer_redemption,
+    insert_entity_associations,
+    insert_activity_log,
+    fetch_activity_logs,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -132,19 +142,20 @@ _EVENT_SUBSCRIBERS: set[asyncio.Queue] = set()
 
 
 def get_state() -> dict[str, pd.DataFrame]:
-    global _RUNTIME_DATASET
+    global _RUNTIME_DATASET, _ACTIVITY_LOG
     if _RUNTIME_DATASET is None:
-        dataset, _ = load_raw_dataset(DATA_DIR)
-        _RUNTIME_DATASET = dataset
+        seed_database(DATA_DIR)
+        _RUNTIME_DATASET = load_dataset_from_db()
+        _ACTIVITY_LOG = fetch_activity_logs(100)
         _run_full_recompute_and_emit_events(initial_load=True)
     return _RUNTIME_DATASET
 
 
 def reset_state() -> None:
-    """Reset in-memory state to baseline raw dataset."""
+    """Reset database state and re-seed from baseline raw dataset."""
     global _RUNTIME_DATASET, _SCORED_CUSTOMERS_CACHE, _ACTIVITY_LOG, _OVERVIEW_CACHE
-    dataset, _ = load_raw_dataset(DATA_DIR)
-    _RUNTIME_DATASET = dataset
+    seed_database(DATA_DIR, force=True)
+    _RUNTIME_DATASET = load_dataset_from_db()
     _SCORED_CUSTOMERS_CACHE.clear()
     _ACTIVITY_LOG.clear()
     _OVERVIEW_CACHE.clear()
@@ -232,9 +243,10 @@ def _run_full_recompute_and_emit_events(
     initial_load: bool = False,
 ) -> tuple[dict[str, Any], bool]:
     """Re-run feature engineering across full population, re-score all customers, diff scores, update Overview stats, and emit activity events."""
-    global _SCORED_CUSTOMERS_CACHE, _ACTIVITY_LOG, _OVERVIEW_CACHE
+    global _RUNTIME_DATASET, _SCORED_CUSTOMERS_CACHE, _ACTIVITY_LOG, _OVERVIEW_CACHE
 
-    dataset = _load_all_data()
+    dataset = load_dataset_from_db()
+    _RUNTIME_DATASET = dataset
     if dataset["customers"].empty:
         return {}, False
 
@@ -275,6 +287,14 @@ def _run_full_recompute_and_emit_events(
                         "customer_id": cid,
                     }
                     _ACTIVITY_LOG.insert(0, act_item)
+                    insert_activity_log({
+                        "id": act_item["id"],
+                        "timestamp": act_item["timestamp"],
+                        "event_type": act_item["type"],
+                        "customer_id": act_item["customer_id"],
+                        "severity": act_item["severity"],
+                        "message": act_item["description"],
+                    })
                     _broadcast_event_sync(act_item)
             else:
                 prev_risk = _get_risk_category(prev_prob)
@@ -291,6 +311,14 @@ def _run_full_recompute_and_emit_events(
                         "customer_id": cid,
                     }
                     _ACTIVITY_LOG.insert(0, act_item)
+                    insert_activity_log({
+                        "id": act_item["id"],
+                        "timestamp": act_item["timestamp"],
+                        "event_type": act_item["type"],
+                        "customer_id": act_item["customer_id"],
+                        "severity": act_item["severity"],
+                        "message": act_item["description"],
+                    })
                     _broadcast_event_sync(act_item)
 
     # If a specific webhook triggered this recompute, emit an activity log for it
@@ -311,6 +339,14 @@ def _run_full_recompute_and_emit_events(
             "customer_id": cid,
         }
         _ACTIVITY_LOG.insert(0, trigger_act)
+        insert_activity_log({
+            "id": trigger_act["id"],
+            "timestamp": trigger_act["timestamp"],
+            "event_type": trigger_act["type"],
+            "customer_id": trigger_act["customer_id"],
+            "severity": trigger_act["severity"],
+            "message": trigger_act["description"],
+        })
         _broadcast_event_sync(trigger_act)
         event_emitted = True
 
@@ -376,7 +412,7 @@ def predict(request: PredictionRequest) -> PredictionResponse:
             customer_payments=pd.DataFrame([p.model_dump() for p in request.customer_payments]),
             customer_ips=pd.DataFrame([i.model_dump() for i in request.customer_ips]),
             as_of=pd.Timestamp(request.as_of),
-            explain=request.explain,
+            include_explanation=request.explain,
         )
         return PredictionResponse.model_validate(result)
     except ValueError as e:
@@ -404,7 +440,7 @@ def predict_customer(customer_id: str, explain: bool = True) -> PredictionRespon
             customer_payments=state["customer_payments"],
             customer_ips=state["customer_ips"],
             as_of=as_of_ts,
-            explain=explain,
+            include_explanation=explain,
         )
         return PredictionResponse.model_validate(result)
     except ValueError as e:
@@ -436,42 +472,64 @@ def webhook_ingest_event(
     prev_score = _SCORED_CUSTOMERS_CACHE.get(cid)
     prev_risk = _get_risk_category(prev_score) if prev_score is not None else "UNKNOWN"
 
-    # 2. Append raw event to underlying data store (in-memory state + CSV append)
+    # 2. Append raw event to underlying data store (SQLite DB + in-memory DataFrames)
     if event_type == "customer_created":
-        new_cust = pd.DataFrame([{
+        cust_dict = {
             "customer_id": cid,
             "name": payload.get("name") or f"Customer {cid[:6]}",
             "email": payload.get("email") or f"{cid}@example.com",
             "phone": payload.get("phone") or "0000000000",
+            "created_at": ts,
+        }
+        insert_customer(cust_dict)
+        insert_entity_associations(
+            customer_id=cid,
+            device_id=payload.get("device_id"),
+            address_id=payload.get("address_id"),
+            payment_id=payload.get("payment_id"),
+            ip_address=payload.get("ip_address"),
+        )
+        new_cust = pd.DataFrame([{
+            "customer_id": cid,
+            "name": cust_dict["name"],
+            "email": cust_dict["email"],
+            "phone": cust_dict["phone"],
             "created_at": pd.Timestamp(ts),
         }])
         state["customers"] = pd.concat([state["customers"], new_cust], ignore_index=True).drop_duplicates(subset=["customer_id"])
-        new_cust.to_csv(DATA_DIR / "customers.csv", mode="a", header=False, index=False)
 
         if payload.get("device_id"):
             dev_df = pd.DataFrame([{"customer_id": cid, "device_id": str(payload["device_id"])}])
             state["customer_devices"] = pd.concat([state["customer_devices"], dev_df], ignore_index=True).drop_duplicates()
-            dev_df.to_csv(DATA_DIR / "customer_devices.csv", mode="a", header=False, index=False)
 
         if payload.get("address_id"):
             addr_df = pd.DataFrame([{"customer_id": cid, "address_id": str(payload["address_id"])}])
             state["customer_addresses"] = pd.concat([state["customer_addresses"], addr_df], ignore_index=True).drop_duplicates()
-            addr_df.to_csv(DATA_DIR / "customer_addresses.csv", mode="a", header=False, index=False)
 
         if payload.get("payment_id"):
             pay_df = pd.DataFrame([{"customer_id": cid, "payment_id": str(payload["payment_id"])}])
             state["customer_payments"] = pd.concat([state["customer_payments"], pay_df], ignore_index=True).drop_duplicates()
-            pay_df.to_csv(DATA_DIR / "customer_payments.csv", mode="a", header=False, index=False)
 
         if payload.get("ip_address"):
             ip_df = pd.DataFrame([{"customer_id": cid, "ip_address": str(payload["ip_address"])}])
             state["customer_ips"] = pd.concat([state["customer_ips"], ip_df], ignore_index=True).drop_duplicates()
-            ip_df.to_csv(DATA_DIR / "customer_ips.csv", mode="a", header=False, index=False)
 
     elif event_type == "order":
         oid = str(payload.get("order_id") or f"ord_{uuid.uuid4().hex[:8]}")
         amt = float(payload.get("amount", 500.0))
         st = str(payload.get("status", "completed"))
+        insert_order({
+            "order_id": oid,
+            "customer_id": cid,
+            "amount": amt,
+            "timestamp": ts,
+            "status": st,
+        })
+        insert_entity_associations(
+            customer_id=cid,
+            device_id=payload.get("device_id"),
+            ip_address=payload.get("ip_address"),
+        )
         ord_df = pd.DataFrame([{
             "order_id": oid,
             "customer_id": cid,
@@ -480,7 +538,6 @@ def webhook_ingest_event(
             "timestamp": pd.Timestamp(ts),
         }])
         state["orders"] = pd.concat([state["orders"], ord_df], ignore_index=True).drop_duplicates(subset=["order_id"])
-        ord_df.to_csv(DATA_DIR / "orders.csv", mode="a", header=False, index=False)
 
         if payload.get("device_id"):
             dev_df = pd.DataFrame([{"customer_id": cid, "device_id": str(payload["device_id"])}])
@@ -494,6 +551,14 @@ def webhook_ingest_event(
         oid = str(payload.get("order_id") or f"ord_{uuid.uuid4().hex[:8]}")
         off = str(payload.get("offer_code") or payload.get("offer_id") or "PROMO100")
         disc = float(payload.get("discount_amount", 100.0))
+        insert_offer_redemption({
+            "redemption_id": rid,
+            "customer_id": cid,
+            "order_id": oid,
+            "offer_id": off,
+            "discount_amount": disc,
+            "timestamp": ts,
+        })
         red_df = pd.DataFrame([{
             "redemption_id": rid,
             "customer_id": cid,
@@ -503,7 +568,6 @@ def webhook_ingest_event(
             "timestamp": pd.Timestamp(ts),
         }])
         state["offer_redemptions"] = pd.concat([state["offer_redemptions"], red_df], ignore_index=True).drop_duplicates(subset=["redemption_id"])
-        red_df.to_csv(DATA_DIR / "offer_redemptions.csv", mode="a", header=False, index=False)
 
     _compute_as_of.cache_clear()
 
@@ -534,8 +598,11 @@ def webhook_ingest_event(
 
 @app.get("/v1/activity/feed")
 def get_activity_feed():
-    """Return structured activity log events (most-recent first)."""
-    return JSONResponse(_ACTIVITY_LOG)
+    """Return structured activity log events (most-recent first) from persistent database."""
+    logs = fetch_activity_logs(100)
+    if not logs:
+        logs = _ACTIVITY_LOG
+    return JSONResponse(logs)
 
 
 # ── Event Streaming / Subscriber logic ──────────────────────────────────────
@@ -859,6 +926,13 @@ def get_feature_importance():
         {"feature": "average_spend", "importance": 0.031, "category": "Behavioral"},
     ]
     return JSONResponse(rankings)
+
+
+@app.post("/v1/reset")
+def post_reset():
+    """Reset database state and re-seed clean baseline dataset."""
+    reset_state()
+    return {"status": "success", "message": "Database state reset to clean baseline."}
 
 
 @app.get("/health")

@@ -65,11 +65,12 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+  background: transparent !important;
 }
 
-.activity-row-type.sev-high { color: #E5341C; }
-.activity-row-type.sev-medium { color: #EF9F27; }
-.activity-row-type.sev-info { color: #1D9E75; }
+.activity-row-type.sev-high { color: #E5341C !important; background: transparent !important; }
+.activity-row-type.sev-medium { color: #EF9F27 !important; background: transparent !important; }
+.activity-row-type.sev-info { color: #1D9E75 !important; background: transparent !important; }
 
 .activity-row-desc {
   font-size: 0.88rem;

@@ -166,6 +166,8 @@ export interface ActivityEvent {
   severity: Severity;
   entityType?: string;
   entityId?: string;
+  event_type?: string;
+  message?: string;
 }
 
 /* ─── Analytics types ───────────────────────────────────────── */

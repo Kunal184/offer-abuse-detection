@@ -66,14 +66,16 @@ export default function ActivityPage() {
               minute: '2-digit',
               second: '2-digit',
             });
+            const evType = (event.type || event.event_type || 'EVENT').replace(/_/g, ' ').toUpperCase();
+            const evDesc = event.description || event.message || 'Activity event logged';
             return (
-              <div key={event.id} className="activity-row">
+              <div key={event.id || Math.random()} className="activity-row">
                 <div className="activity-row-time">{time}</div>
-                <div className={`activity-row-type sev-${event.severity}`}>
-                  {event.type.replace(/_/g, ' ').toUpperCase()}
+                <div className={`activity-row-type sev-${event.severity || 'info'}`}>
+                  {evType}
                 </div>
-                <div className="activity-row-desc">{event.description}</div>
-                <div className={`activity-row-dot sev-${event.severity}`} />
+                <div className="activity-row-desc">{evDesc}</div>
+                <div className={`activity-row-dot sev-${event.severity || 'info'}`} />
               </div>
             );
           })
