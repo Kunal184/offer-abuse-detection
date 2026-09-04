@@ -57,6 +57,7 @@ interface AppState {
   setClusters: (clusters: ClusterInfo[]) => void;
   setGraph: (nodes: GraphNode[], links: GraphLink[]) => void;
   appendActivity: (events: ActivityEvent[]) => void;
+  setActivityEvents: (events: ActivityEvent[]) => void;
   setSelectedCustomer: (customer: CustomerEnriched | null) => void;
   setSelectedCluster: (cluster: ClusterInfo | null) => void;
   setActiveView: (view: string) => void;
@@ -93,6 +94,7 @@ export const useAppStore = create<AppState>((set) => ({
   setGraph: (nodes, links) => set({ graphNodes: nodes, graphLinks: links }),
   appendActivity: (events) =>
     set((state) => ({ activityEvents: [...state.activityEvents, ...events] })),
+  setActivityEvents: (events) => set({ activityEvents: events }),
   setSelectedCustomer: (customer) => set({ selectedCustomer: customer }),
   setSelectedCluster: (cluster) => set({ selectedCluster: cluster }),
   setActiveView: (view) => set({ activeView: view }),

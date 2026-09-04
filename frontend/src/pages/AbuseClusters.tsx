@@ -216,7 +216,7 @@ export default function AbuseClustersPage() {
                           <div>
                             <div style={{ fontSize: 9, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>Member Accounts</div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                              {(cluster.customers || cluster.customerIds || []).slice(0, 8).map((c: string) => (
+                              {(cluster.customers || []).slice(0, 8).map((c: string) => (
                                 <span key={c} className="mono" style={{ fontSize: 10, color: 'var(--text-secondary)', background: '#0A0A0A', padding: '2px 6px', borderRadius: 3, border: '1px solid #242422' }}>
                                   {c.slice(0, 8)}…
                                 </span>
