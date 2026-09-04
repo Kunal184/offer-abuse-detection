@@ -95,7 +95,8 @@ export interface FeatureRow {
   account_age_days: number;
   order_count: number;
   total_spend: number;
-  average_spend: number;
+  spend_to_discount_ratio: number;
+  order_amount_std: number;
   time_to_first_order_hours: number;
   redemption_count: number;
   time_to_first_redemption_hours: number;

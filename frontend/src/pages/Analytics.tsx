@@ -30,20 +30,16 @@ export default function AnalyticsPage() {
       .then(setFeatureImportance)
       .catch(() => {
         setFeatureImportance([
-          { feature: 'average_spend', importance: 0.7220 },
-          { feature: 'time_to_first_redemption_hours', importance: 0.1178 },
-          { feature: 'unique_connected_customers', importance: 0.0426 },
-          { feature: 'max_device_user_count', importance: 0.0353 },
-          { feature: 'max_ip_user_count', importance: 0.0271 },
-          { feature: 'order_count', importance: 0.0220 },
-          { feature: 'order_redemption_rate', importance: 0.0091 },
-          { feature: 'time_to_first_order_hours', importance: 0.0115 },
-          { feature: 'account_age_days', importance: 0.0008 },
-          { feature: 'max_address_user_count', importance: 0.0 },
-          { feature: 'max_entity_degree', importance: 0.0 },
-          { feature: 'cluster_size', importance: 0.0067 },
-          { feature: 'redemption_count', importance: 0.0032 },
-          { feature: 'total_spend', importance: 0.0017 },
+          { feature: 'order_amount_std', importance: 0.6128 },
+          { feature: 'time_to_first_redemption_hours', importance: 0.1188 },
+          { feature: 'spend_to_discount_ratio', importance: 0.0749 },
+          { feature: 'unique_connected_customers', importance: 0.0745 },
+          { feature: 'max_ip_user_count', importance: 0.0355 },
+          { feature: 'total_spend', importance: 0.0312 },
+          { feature: 'max_device_user_count', importance: 0.0228 },
+          { feature: 'order_count', importance: 0.0081 },
+          { feature: 'time_to_first_order_hours', importance: 0.0077 },
+          { feature: 'cluster_size', importance: 0.0025 },
         ]);
       })
       .finally(() => setLoadingFeatures(false));

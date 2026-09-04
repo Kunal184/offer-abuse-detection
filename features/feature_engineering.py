@@ -13,7 +13,8 @@ FEATURE_COLUMNS = (
     "account_age_days",
     "order_count",
     "total_spend",
-    "average_spend",
+    "spend_to_discount_ratio",
+    "order_amount_std",
     "time_to_first_order_hours",
     "redemption_count",
     "time_to_first_redemption_hours",
@@ -34,7 +35,7 @@ def build_feature_matrix(
     data_frames: dict[str, pd.DataFrame | list[dict[str, Any]]] | None = None,
     as_of: Any | None = None,
 ) -> pd.DataFrame:
-    """Build the 16-feature matrix from historical source tables.
+    """Build the feature matrix from historical source tables.
 
     Supports either loading from ``data_dir`` or taking pre-loaded ``data_frames``.
     Supports temporal anchoring via optional ``as_of``.
@@ -107,7 +108,7 @@ def build_feature_matrix(
             .agg(
                 order_count=("order_id", "count"),
                 total_spend=("amount", "sum"),
-                average_spend=("amount", "mean"),
+                order_amount_std=("amount", "std"),
                 first_order_time=("timestamp", "min"),
             )
             .reset_index()
@@ -116,7 +117,7 @@ def build_feature_matrix(
         df_features = df_features.merge(order_stats, on="customer_id", how="left")
         df_features["order_count"] = df_features["order_count"].fillna(0).astype(int)
         df_features["total_spend"] = df_features["total_spend"].fillna(0.0)
-        df_features["average_spend"] = df_features["average_spend"].fillna(0.0)
+        df_features["order_amount_std"] = df_features["order_amount_std"].fillna(0.0)
 
         # Time to first order (hours)
         cust_time = customers[["customer_id", "created_at"]].merge(
@@ -130,7 +131,7 @@ def build_feature_matrix(
     else:
         df_features["order_count"] = 0
         df_features["total_spend"] = 0.0
-        df_features["average_spend"] = 0.0
+        df_features["order_amount_std"] = 0.0
         df_features["time_to_first_order_hours"] = -1.0
 
     # Redemption statistics
@@ -139,6 +140,7 @@ def build_feature_matrix(
             offer_redemptions.groupby("customer_id")
             .agg(
                 redemption_count=("redemption_id", "count"),
+                total_discount_amount=("discount_amount", "sum"),
                 orders_with_redemption=("order_id", "nunique"),
                 first_redemption_time=("timestamp", "min"),
             )
@@ -147,6 +149,7 @@ def build_feature_matrix(
 
         df_features = df_features.merge(redemption_stats, on="customer_id", how="left")
         df_features["redemption_count"] = df_features["redemption_count"].fillna(0).astype(int)
+        df_features["total_discount_amount"] = df_features["total_discount_amount"].fillna(0.0)
         df_features["orders_with_redemption"] = df_features["orders_with_redemption"].fillna(0).astype(int)
 
         # Time to first redemption (hours)
@@ -162,8 +165,13 @@ def build_feature_matrix(
         df_features.drop(columns=["first_redemption_time"], errors="ignore", inplace=True)
     else:
         df_features["redemption_count"] = 0
+        df_features["total_discount_amount"] = 0.0
         df_features["orders_with_redemption"] = 0
         df_features["time_to_first_redemption_hours"] = -1.0
+
+    # Spend to discount ratio (normalized domain-agnostic metric)
+    df_features["spend_to_discount_ratio"] = df_features["total_spend"] / (df_features["total_discount_amount"] + 1.0)
+    df_features.drop(columns=["total_discount_amount"], errors="ignore", inplace=True)
 
     # Order redemption rate
     df_features["order_redemption_rate"] = np.where(

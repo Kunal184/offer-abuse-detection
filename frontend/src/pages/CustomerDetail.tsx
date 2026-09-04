@@ -22,7 +22,8 @@ const SIGNAL_LABELS: Record<string, { label: string; description: string }> = {
   account_age_days: { label: 'Account Age', description: 'Days since account creation' },
   order_count: { label: 'Order Count', description: 'Total orders placed' },
   total_spend: { label: 'Total Spend', description: 'Lifetime spending' },
-  average_spend: { label: 'Average Spend', description: 'Mean order value' },
+  spend_to_discount_ratio: { label: 'Spend / Discount Ratio', description: 'Ratio of total spend to discount received' },
+  order_amount_std: { label: 'Order Amount Std Dev', description: 'Standard deviation of order amounts (INR)' },
   time_to_first_order_hours: { label: 'Time to First Order', description: 'Hours from signup to first order' },
   redemption_count: { label: 'Redemption Count', description: 'Offers redeemed' },
   time_to_first_redemption_hours: { label: 'Time to First Redemption', description: 'Hours from signup to first redemption' },
@@ -433,7 +434,8 @@ export default function CustomerDetailPage() {
 }
 
 function formatSignalValue(key: string, value: number): { value: string; unit?: string } {
-  if (key === 'total_spend' || key === 'average_spend') return { value: `₹${Number(value).toFixed(2)}`, unit: '' };
+  if (key === 'total_spend' || key === 'order_amount_std' || key === 'average_spend') return { value: `₹${Number(value).toFixed(2)}`, unit: '' };
+  if (key === 'spend_to_discount_ratio') return { value: `${Number(value).toFixed(2)}x`, unit: '' };
   if (key === 'order_redemption_rate') return { value: `${(value * 100).toFixed(1)}`, unit: '%' };
   if (key.includes('time_to_first') || key === 'account_age_days') {
     if (key === 'account_age_days') return { value: `${value.toFixed(0)}`, unit: 'd' };
