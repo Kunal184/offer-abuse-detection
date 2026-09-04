@@ -744,6 +744,7 @@ def webhook_ingest_event(
     if cid in set(state["customers"]["customer_id"]):
         try:
             curr_state = get_state()
+            max_as_of = max(pd.Timestamp(ts), pd.Timestamp(_compute_as_of()))
             pred_res = score_customer(
                 customer_id=cid,
                 customers=curr_state["customers"],
@@ -753,7 +754,7 @@ def webhook_ingest_event(
                 customer_addresses=curr_state["customer_addresses"],
                 customer_payments=curr_state["customer_payments"],
                 customer_ips=curr_state["customer_ips"],
-                as_of=pd.Timestamp(_compute_as_of()),
+                as_of=max_as_of,
             )
         except Exception:
             pred_res = None
