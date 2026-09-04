@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import './LandingPage.css';
 
 export default function LandingPage() {
-  const quadRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const animatedRefs = useRef<(HTMLElement | HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -17,7 +17,7 @@ export default function LandingPage() {
       { threshold: 0.15 }
     );
 
-    quadRefs.current.forEach((ref) => {
+    animatedRefs.current.forEach((ref) => {
       if (ref) observer.observe(ref);
     });
 
@@ -61,7 +61,7 @@ export default function LandingPage() {
         <div className="vertical-editorial-container">
           
           {/* STEP 01 — MERCHANT */}
-          <article className="vertical-step-block">
+          <article className="vertical-step-block scroll-reveal" ref={(el) => { animatedRefs.current[0] = el; }}>
             <div className="step-content">
               <div className="step-tag">01 — MERCHANT</div>
               <h2 className="step-headline">YOU ISSUE A SINGLE-USE OFFER.</h2>
@@ -117,7 +117,7 @@ export default function LandingPage() {
           </article>
 
           {/* STEP 02 — ABUSE */}
-          <article className="vertical-step-block">
+          <article className="vertical-step-block scroll-reveal" ref={(el) => { animatedRefs.current[1] = el; }}>
             <div className="step-content">
               <div className="step-tag">02 — ABUSE</div>
               <h2 className="step-headline">CUSTOMERS REDEEM IT ACROSS MULTIPLE IDENTITIES.</h2>
@@ -185,7 +185,7 @@ export default function LandingPage() {
           </article>
 
           {/* STEP 03 — HEX */}
-          <article className="vertical-step-block">
+          <article className="vertical-step-block scroll-reveal" ref={(el) => { animatedRefs.current[2] = el; }}>
             <div className="step-content">
               <div className="step-tag">03 — HEX</div>
               <h2 className="step-headline">HEX CONNECTS THE IDENTITIES AND REVEALS THE NETWORK.</h2>
@@ -289,7 +289,7 @@ export default function LandingPage() {
             {/* TOP LEFT: THE SIGNAL */}
             <div
               className="grid-quadrant quad-top-left"
-              ref={(el) => { quadRefs.current[0] = el; }}
+              ref={(el) => { animatedRefs.current[3] = el; }}
             >
               <div>
                 <div className="quadrant-tag">01 — THE SIGNAL</div>
@@ -304,7 +304,7 @@ export default function LandingPage() {
             {/* TOP RIGHT: THE NETWORK */}
             <div
               className="grid-quadrant quad-top-right"
-              ref={(el) => { quadRefs.current[1] = el; }}
+              ref={(el) => { animatedRefs.current[4] = el; }}
             >
               <div>
                 <div className="quadrant-tag">02 — THE NETWORK</div>
@@ -349,7 +349,7 @@ export default function LandingPage() {
             {/* BOTTOM LEFT: THE MODEL */}
             <div
               className="grid-quadrant quad-bottom-left"
-              ref={(el) => { quadRefs.current[2] = el; }}
+              ref={(el) => { animatedRefs.current[5] = el; }}
             >
               <div>
                 <div className="quadrant-tag">03 — THE MODEL</div>
@@ -364,7 +364,7 @@ export default function LandingPage() {
             {/* BOTTOM RIGHT: THE RESULT (F1 Striped Banner Widget) */}
             <div
               className="grid-quadrant quad-bottom-right"
-              ref={(el) => { quadRefs.current[3] = el; }}
+              ref={(el) => { animatedRefs.current[6] = el; }}
             >
               <div>
                 <div className="quadrant-tag">04 — THE RESULT</div>

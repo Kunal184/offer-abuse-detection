@@ -152,6 +152,29 @@
   align-items: center;
 }
 
+/* Scroll reveal animations for vertical narrative blocks */
+.scroll-reveal .step-content {
+  opacity: 0;
+  transform: translateY(35px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.scroll-reveal .step-visual-container {
+  opacity: 0;
+  transform: translateY(45px) scale(0.96);
+  transition: opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.15s, transform 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.15s;
+}
+
+.scroll-reveal.is-visible .step-content {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.scroll-reveal.is-visible .step-visual-container {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
 .vertical-step-block:last-child {
   margin-bottom: 0;
 }
