@@ -111,6 +111,8 @@ export interface FeatureRow {
   max_entity_degree: number;
   cluster_size: number;
   cluster_creation_span_hours: number;
+  cluster_redemptions_1h: number;
+  min_account_creation_delta_minutes: number;
 }
 
 /* ─── Enriched customer (UI view) ───────────────────────────── */

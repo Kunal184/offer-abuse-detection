@@ -925,21 +925,21 @@ def get_clusters():
 
 @app.get("/v1/analytics/metrics")
 def get_analytics_metrics():
-    """Return model performance metrics computed on held-out evaluation baseline."""
+    """Return model performance metrics computed on held-out group-aware evaluation baseline."""
     return JSONResponse({
         "modelName": "XGBoost Group-Aware Classifier",
-        "auc": 0.985,
-        "rocAuc": 0.985,
-        "prAuc": 0.9961,
-        "f1": 0.935,
-        "precision": 0.973,
-        "recall": 0.900,
-        "confusionMatrix": [[132, 1], [4, 36]],
+        "auc": 0.9961,
+        "rocAuc": 0.9961,
+        "prAuc": 0.9872,
+        "f1": 0.8955,
+        "precision": 1.0000,
+        "recall": 0.8108,
+        "confusionMatrix": [[133, 0], [7, 30]],
         "confusionMatrixDict": {
-            "truePositives": 36,
-            "falsePositives": 1,
-            "trueNegatives": 132,
-            "falseNegatives": 4,
+            "truePositives": 30,
+            "falsePositives": 0,
+            "trueNegatives": 133,
+            "falseNegatives": 7,
         },
     })
 
@@ -948,14 +948,21 @@ def get_analytics_metrics():
 def get_feature_importance():
     """Return SHAP feature importance rankings."""
     rankings = [
-        {"feature": "cluster_size", "importance": 0.284, "category": "Graph Network"},
-        {"feature": "unique_connected_customers", "importance": 0.215, "category": "Graph Network"},
-        {"feature": "max_device_user_count", "importance": 0.142, "category": "Graph Network"},
-        {"feature": "max_payment_user_count", "importance": 0.118, "category": "Graph Network"},
-        {"feature": "order_redemption_rate", "importance": 0.089, "category": "Behavioral"},
-        {"feature": "time_to_first_redemption_hours", "importance": 0.058, "category": "Temporal"},
-        {"feature": "account_age_days", "importance": 0.042, "category": "Behavioral"},
-        {"feature": "average_spend", "importance": 0.031, "category": "Behavioral"},
+        {"feature": "time_to_first_order_hours", "importance": 0.5566, "category": "Temporal"},
+        {"feature": "order_redemption_rate", "importance": 0.1130, "category": "Behavioral"},
+        {"feature": "order_count", "importance": 0.0894, "category": "Behavioral"},
+        {"feature": "max_device_user_count", "importance": 0.0670, "category": "Graph Network"},
+        {"feature": "cluster_size", "importance": 0.0302, "category": "Graph Network"},
+        {"feature": "account_age_days", "importance": 0.0268, "category": "Behavioral"},
+        {"feature": "cluster_redemptions_1h", "importance": 0.0219, "category": "Temporal Velocity"},
+        {"feature": "max_ip_user_count", "importance": 0.0197, "category": "Graph Network"},
+        {"feature": "min_account_creation_delta_minutes", "importance": 0.0171, "category": "Temporal Velocity"},
+        {"feature": "redemption_count", "importance": 0.0138, "category": "Behavioral"},
+        {"feature": "total_spend", "importance": 0.0102, "category": "Behavioral"},
+        {"feature": "time_to_first_redemption_hours", "importance": 0.0093, "category": "Temporal"},
+        {"feature": "unique_connected_customers", "importance": 0.0092, "category": "Graph Network"},
+        {"feature": "spend_to_discount_ratio", "importance": 0.0090, "category": "Behavioral"},
+        {"feature": "shared_entity_ratio", "importance": 0.0069, "category": "Graph Network"},
     ]
     return JSONResponse(rankings)
 
