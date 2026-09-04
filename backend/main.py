@@ -342,7 +342,7 @@ def _run_full_recompute_and_emit_events(
         ev_type = trigger_event.get("event_type", "webhook")
         score = new_scores.get(cid, 0.0)
         risk = _get_risk_category(score)
-        sev = "high" if score >= 0.7 else ("medium" if score >= 0.3 else "info")
+        sev = "high" if score >= 0.7 else ("medium" if score >= 0.3 else "neutral")
         ev_id = trigger_event.get("order_id") or trigger_event.get("redemption_id") or trigger_event.get("device_id") or trigger_event.get("address_id") or trigger_event.get("payment_id") or trigger_event.get("ip_address")
         if ev_type == "order" and ev_id:
             trigger_desc = f"Order {ev_id} placed by Cust {cid[:8]} · {risk} ({score:.1%})"
@@ -753,7 +753,7 @@ def webhook_ingest_event(
                 customer_addresses=curr_state["customer_addresses"],
                 customer_payments=curr_state["customer_payments"],
                 customer_ips=curr_state["customer_ips"],
-                as_of=pd.Timestamp(ts),
+                as_of=pd.Timestamp(_compute_as_of()),
             )
         except Exception:
             pred_res = None
