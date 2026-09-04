@@ -830,10 +830,13 @@ def get_analytics_metrics():
     return JSONResponse({
         "modelName": "XGBoost Group-Aware Classifier",
         "auc": 0.985,
+        "rocAuc": 0.985,
+        "prAuc": 0.9961,
         "f1": 0.935,
         "precision": 0.973,
         "recall": 0.900,
-        "confusionMatrix": {
+        "confusionMatrix": [[132, 1], [4, 36]],
+        "confusionMatrixDict": {
             "truePositives": 36,
             "falsePositives": 1,
             "trueNegatives": 132,

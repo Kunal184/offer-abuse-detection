@@ -170,13 +170,21 @@ export interface ActivityEvent {
 
 /* ─── Analytics types ───────────────────────────────────────── */
 
+export interface ConfusionMatrixDict {
+  truePositives?: number;
+  falsePositives?: number;
+  trueNegatives?: number;
+  falseNegatives?: number;
+}
+
 export interface ModelMetrics {
   f1: number;
   precision: number;
   recall: number;
-  rocAuc: number;
-  prAuc: number;
-  confusionMatrix: [[number, number], [number, number]];
+  rocAuc?: number;
+  auc?: number;
+  prAuc?: number;
+  confusionMatrix: [[number, number], [number, number]] | ConfusionMatrixDict;
 }
 
 export interface FeatureImportance {

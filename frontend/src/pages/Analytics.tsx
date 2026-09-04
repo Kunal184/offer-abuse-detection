@@ -49,7 +49,33 @@ export default function AnalyticsPage() {
       .finally(() => setLoadingFeatures(false));
   }, []);
 
-  const topFeatures = featureImportance.slice(0, 10);
+  const topFeatures = (featureImportance || []).slice(0, 10);
+
+  const f1Val = metrics?.f1 != null ? metrics.f1.toFixed(4) : '—';
+  const precisionVal = metrics?.precision != null ? metrics.precision.toFixed(4) : '—';
+  const recallVal = metrics?.recall != null ? metrics.recall.toFixed(4) : '—';
+  const rocAucVal =
+    metrics?.rocAuc != null
+      ? metrics.rocAuc.toFixed(4)
+      : metrics?.auc != null
+      ? metrics.auc.toFixed(4)
+      : '—';
+
+  let cm: [[number, number], [number, number]] = [
+    [0, 0],
+    [0, 0],
+  ];
+  if (metrics?.confusionMatrix) {
+    if (Array.isArray(metrics.confusionMatrix)) {
+      cm = metrics.confusionMatrix as [[number, number], [number, number]];
+    } else {
+      const d = metrics.confusionMatrix;
+      cm = [
+        [d.trueNegatives ?? 0, d.falsePositives ?? 0],
+        [d.falseNegatives ?? 0, d.truePositives ?? 0],
+      ];
+    }
+  }
 
   return (
     <div className="analytics-container">
@@ -68,25 +94,25 @@ export default function AnalyticsPage() {
       <div className="analytics-kpi-grid">
         <div className="kpi-quad">
           <div className="kpi-quad-label">01 — F1 SCORE</div>
-          <div className="kpi-quad-val highlight-red">{loadingMetrics ? '—' : metrics?.f1.toFixed(4)}</div>
+          <div className="kpi-quad-val highlight-red">{loadingMetrics ? '—' : f1Val}</div>
           <div className="kpi-quad-sub">Group-Aware Split F1</div>
         </div>
 
         <div className="kpi-quad">
           <div className="kpi-quad-label">02 — PRECISION</div>
-          <div className="kpi-quad-val" style={{ color: '#EF9F27' }}>{loadingMetrics ? '—' : metrics?.precision.toFixed(4)}</div>
+          <div className="kpi-quad-val" style={{ color: '#EF9F27' }}>{loadingMetrics ? '—' : precisionVal}</div>
           <div className="kpi-quad-sub">TP / (TP + FP)</div>
         </div>
 
         <div className="kpi-quad">
           <div className="kpi-quad-label">03 — RECALL</div>
-          <div className="kpi-quad-val" style={{ color: '#1D9E75' }}>{loadingMetrics ? '—' : metrics?.recall.toFixed(4)}</div>
+          <div className="kpi-quad-val" style={{ color: '#1D9E75' }}>{loadingMetrics ? '—' : recallVal}</div>
           <div className="kpi-quad-sub">TP / (TP + FN)</div>
         </div>
 
         <div className="kpi-quad">
           <div className="kpi-quad-label">04 — ROC-AUC</div>
-          <div className="kpi-quad-val">{loadingMetrics ? '—' : metrics?.rocAuc.toFixed(4)}</div>
+          <div className="kpi-quad-val">{loadingMetrics ? '—' : rocAucVal}</div>
           <div className="kpi-quad-sub">Area Under ROC Curve</div>
         </div>
       </div>
@@ -109,11 +135,11 @@ export default function AnalyticsPage() {
               <div style={{ textAlign: 'center', fontSize: 11, color: 'rgba(250,250,248,0.6)', textTransform: 'uppercase' }}>Predicted Clear</div>
               <div style={{ textAlign: 'center', fontSize: 11, color: 'rgba(250,250,248,0.6)', textTransform: 'uppercase' }}>Predicted Flag</div>
               <div style={{ fontSize: 11, color: 'rgba(250,250,248,0.6)', textTransform: 'uppercase', alignSelf: 'center' }}>Actual Clear</div>
-              <div className="confusion-box-clear">{metrics.confusionMatrix[0][0]}</div>
-              <div className="confusion-box-warn">{metrics.confusionMatrix[0][1]}</div>
+              <div className="confusion-box-clear">{cm[0][0]}</div>
+              <div className="confusion-box-warn">{cm[0][1]}</div>
               <div style={{ fontSize: 11, color: 'rgba(250,250,248,0.6)', textTransform: 'uppercase', alignSelf: 'center' }}>Actual Flag</div>
-              <div className="confusion-box-warn">{metrics.confusionMatrix[1][0]}</div>
-              <div className="confusion-box">{metrics.confusionMatrix[1][1]}</div>
+              <div className="confusion-box-warn">{cm[1][0]}</div>
+              <div className="confusion-box">{cm[1][1]}</div>
             </div>
           )}
         </div>
