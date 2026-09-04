@@ -35,9 +35,10 @@ class ShapExplanationTest(unittest.TestCase):
 
         # 1. Returned feature names match the 16 actual model columns
         all_contribs = expl["all_contributions"]
-        self.assertEqual(len(all_contribs), 16)
-        returned_feature_names = tuple(c["feature_name"] for c in all_contribs)
-        self.assertEqual(returned_feature_names, FEATURE_COLUMNS)
+        from features.feature_engineering import FEATURE_COLUMNS
+        self.assertEqual(len(all_contribs), len(FEATURE_COLUMNS))
+        feature_names = [c["feature_name"] for c in all_contribs]
+        self.assertEqual(tuple(feature_names), FEATURE_COLUMNS)
 
         # 2. Check top positive and top negative lists
         pos_contribs = expl["top_positive_contributors"]

@@ -96,7 +96,7 @@ export interface FeatureRow {
   order_count: number;
   total_spend: number;
   spend_to_discount_ratio: number;
-  order_amount_std: number;
+  high_value_promo_ratio: number;
   time_to_first_order_hours: number;
   redemption_count: number;
   time_to_first_redemption_hours: number;
@@ -106,9 +106,11 @@ export interface FeatureRow {
   max_payment_user_count: number;
   max_ip_user_count: number;
   unique_connected_customers: number;
+  shared_entity_ratio: number;
   avg_entity_degree: number;
   max_entity_degree: number;
   cluster_size: number;
+  cluster_creation_span_hours: number;
 }
 
 /* ─── Enriched customer (UI view) ───────────────────────────── */

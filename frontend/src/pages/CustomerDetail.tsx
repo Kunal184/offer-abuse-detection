@@ -23,7 +23,7 @@ const SIGNAL_LABELS: Record<string, { label: string; description: string }> = {
   order_count: { label: 'Order Count', description: 'Total orders placed' },
   total_spend: { label: 'Total Spend', description: 'Lifetime spending' },
   spend_to_discount_ratio: { label: 'Spend / Discount Ratio', description: 'Ratio of total spend to discount received' },
-  order_amount_std: { label: 'Order Amount Std Dev', description: 'Standard deviation of order amounts (INR)' },
+  high_value_promo_ratio: { label: 'High-Value Promo Ratio', description: 'Proportion of redemptions using WELCOME50/REFDOUBLE' },
   time_to_first_order_hours: { label: 'Time to First Order', description: 'Hours from signup to first order' },
   redemption_count: { label: 'Redemption Count', description: 'Offers redeemed' },
   time_to_first_redemption_hours: { label: 'Time to First Redemption', description: 'Hours from signup to first redemption' },
@@ -33,9 +33,11 @@ const SIGNAL_LABELS: Record<string, { label: string; description: string }> = {
   max_payment_user_count: { label: 'Shared Payment Count', description: 'Max users on same payment' },
   max_ip_user_count: { label: 'Shared IP Count', description: 'Max users on same IP' },
   unique_connected_customers: { label: 'Connected Customers', description: 'Customers sharing entities' },
+  shared_entity_ratio: { label: 'Shared Entity Ratio', description: 'Proportion of customer entities shared with others' },
   avg_entity_degree: { label: 'Avg Entity Degree', description: 'Mean connections per entity' },
   max_entity_degree: { label: 'Max Entity Degree', description: 'Max connections on single entity' },
   cluster_size: { label: 'Cluster Size', description: 'Customers in same network' },
+  cluster_creation_span_hours: { label: 'Cluster Creation Span', description: 'Time window (hours) between oldest and newest cluster account' },
 };
 
 export default function CustomerDetailPage() {
@@ -436,8 +438,8 @@ export default function CustomerDetailPage() {
 function formatSignalValue(key: string, value: number): { value: string; unit?: string } {
   if (key === 'total_spend' || key === 'order_amount_std' || key === 'average_spend') return { value: `₹${Number(value).toFixed(2)}`, unit: '' };
   if (key === 'spend_to_discount_ratio') return { value: `${Number(value).toFixed(2)}x`, unit: '' };
-  if (key === 'order_redemption_rate') return { value: `${(value * 100).toFixed(1)}`, unit: '%' };
-  if (key.includes('time_to_first') || key === 'account_age_days') {
+  if (key === 'order_redemption_rate' || key === 'shared_entity_ratio' || key === 'high_value_promo_ratio') return { value: `${(value * 100).toFixed(1)}`, unit: '%' };
+  if (key.includes('time_to_first') || key === 'account_age_days' || key === 'cluster_creation_span_hours') {
     if (key === 'account_age_days') return { value: `${value.toFixed(0)}`, unit: 'd' };
     return { value: `${value.toFixed(1)}`, unit: 'h' };
   }

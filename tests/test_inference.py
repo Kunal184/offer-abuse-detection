@@ -37,7 +37,7 @@ class InferenceTest(unittest.TestCase):
         self.assertLessEqual(result["abuse_probability"], 1.0)
         self.assertEqual(result["model_name"], "xgboost_groupaware")
         self.assertEqual(tuple(result["feature_snapshot"]), FEATURE_COLUMNS)
-        self.assertEqual(len(result["graph_signals"]), 8)
+        self.assertEqual(len(result["graph_signals"]), 10)
 
 
 if __name__ == "__main__":

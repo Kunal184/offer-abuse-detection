@@ -422,7 +422,7 @@ def predict(request: PredictionRequest) -> PredictionResponse:
 
 
 @app.get("/v1/predictions/{customer_id}", response_model=PredictionResponse, response_model_exclude_none=True)
-def predict_customer(customer_id: str, explain: bool = True) -> PredictionResponse:
+def predict_customer(customer_id: str, explain: bool = False) -> PredictionResponse:
     """Score an existing customer from in-memory runtime dataset."""
     state = get_state()
     if state["customers"].empty or customer_id not in set(state["customers"]["customer_id"]):
@@ -447,6 +447,38 @@ def predict_customer(customer_id: str, explain: bool = True) -> PredictionRespon
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Prediction failed: {e}")
+class BatchPredictionRequest(BaseModel):
+    customer_ids: list[str]
+    as_of: str | None = None
+    explain: bool = False
+
+
+class BatchPredictionResponse(BaseModel):
+    predictions: list[PredictionResponse]
+
+
+@app.post("/v1/predictions/batch", response_model=BatchPredictionResponse)
+def batch_predict(request: BatchPredictionRequest) -> BatchPredictionResponse:
+    """Score multiple customers using the frozen group-aware XGBoost artifact."""
+    state = get_state()
+    as_of_ts = pd.Timestamp(request.as_of) if request.as_of else pd.Timestamp(_compute_as_of())
+    results = []
+    for cid in request.customer_ids:
+        if cid in set(state["customers"]["customer_id"]):
+            res = score_customer(
+                customer_id=cid,
+                customers=state["customers"],
+                orders=state["orders"],
+                offer_redemptions=state["offer_redemptions"],
+                customer_devices=state["customer_devices"],
+                customer_addresses=state["customer_addresses"],
+                customer_payments=state["customer_payments"],
+                customer_ips=state["customer_ips"],
+                as_of=as_of_ts,
+                include_explanation=request.explain,
+            )
+            results.append(PredictionResponse.model_validate(res))
+    return BatchPredictionResponse(predictions=results)
 
 
 # ── Webhook Ingestion Endpoint (POST /v1/events) ──────────────────────────────

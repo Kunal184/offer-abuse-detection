@@ -76,10 +76,12 @@ def validate_and_clean_table(
     # Normalize IDs to string and strip whitespace
     for col in df_clean.columns:
         if "id" in col or col in ("customer_id", "ip_address"):
+            if col in required:
+                initial_mask &= df.loc[df_clean.index, col].notna()
             df_clean[col] = df_clean[col].astype(str).str.strip()
             # Drop null/empty strings in required ID columns
             if col in required:
-                initial_mask &= df_clean[col].notna() & (df_clean[col] != "") & (df_clean[col] != "nan")
+                initial_mask &= (df_clean[col] != "") & (df_clean[col] != "nan") & (df_clean[col] != "None")
 
     # Normalize timestamps
     if table_name == "customers" and "created_at" in df_clean.columns:

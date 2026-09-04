@@ -38,10 +38,11 @@ FEATURE_SET_B = [
 
 FEATURE_SET_C = [
     "account_age_days", "order_count", "total_spend", "spend_to_discount_ratio",
-    "time_to_first_order_hours", "redemption_count", "time_to_first_redemption_hours",
-    "order_redemption_rate", "max_device_user_count", "max_address_user_count",
-    "max_payment_user_count", "max_ip_user_count", "unique_connected_customers",
-    "avg_entity_degree", "max_entity_degree", "cluster_size",
+    "time_to_first_order_hours", "redemption_count", "high_value_promo_ratio",
+    "time_to_first_redemption_hours", "order_redemption_rate", "max_device_user_count",
+    "max_address_user_count", "max_payment_user_count", "max_ip_user_count",
+    "unique_connected_customers", "shared_entity_ratio", "avg_entity_degree",
+    "max_entity_degree", "cluster_size", "cluster_creation_span_hours",
 ]
 
 

@@ -32,6 +32,7 @@ FEATURE_COLUMNS = (
     "spend_to_discount_ratio",
     "time_to_first_order_hours",
     "redemption_count",
+    "high_value_promo_ratio",
     "time_to_first_redemption_hours",
     "order_redemption_rate",
     "max_device_user_count",
@@ -39,9 +40,11 @@ FEATURE_COLUMNS = (
     "max_payment_user_count",
     "max_ip_user_count",
     "unique_connected_customers",
+    "shared_entity_ratio",
     "avg_entity_degree",
     "max_entity_degree",
     "cluster_size",
+    "cluster_creation_span_hours",
 )
 
 GRAPH_SIGNAL_COLUMNS = (
@@ -50,9 +53,11 @@ GRAPH_SIGNAL_COLUMNS = (
     "max_payment_user_count",
     "max_ip_user_count",
     "unique_connected_customers",
+    "shared_entity_ratio",
     "avg_entity_degree",
     "max_entity_degree",
     "cluster_size",
+    "cluster_creation_span_hours",
 )
 
 
