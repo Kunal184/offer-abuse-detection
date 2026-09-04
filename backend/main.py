@@ -17,7 +17,7 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from features.feature_engineering import FEATURE_COLUMNS, build_feature_matrix
 from features.ingestion import REQUIRED_COLUMNS, load_raw_dataset, validate_and_clean_table
@@ -104,10 +104,22 @@ class WebhookPayload(BaseModel):
 
 
 class WebhookEventRequest(BaseModel):
-    event_type: str = Field(..., description="event_type: customer_created, order, redemption")
-    customer_id: str = Field(..., min_length=1)
+    event_type: str = Field(..., description="event_type: customer_created, order, redemption, device, address, payment, ip")
+    customer_id: str | None = None
     timestamp: str | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
+    data: dict[str, Any] | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_payload_and_customer(cls, values: Any) -> Any:
+        if isinstance(values, dict):
+            if "data" in values and values["data"] and not values.get("payload"):
+                values["payload"] = values["data"]
+            payload = values.get("payload") or {}
+            if not values.get("customer_id") and "customer_id" in payload:
+                values["customer_id"] = payload["customer_id"]
+        return values
 
 
 class WebhookEventResponse(BaseModel):
@@ -115,10 +127,13 @@ class WebhookEventResponse(BaseModel):
     event_type: str
     customer_id: str
     previous_score: float | None = None
-    new_score: float
-    previous_risk: str
-    new_risk: str
-    event_emitted: bool
+    new_score: float = 0.0
+    previous_risk: str = "CLEAR"
+    new_risk: str = "CLEAR"
+    event_emitted: bool = False
+    table_name: str | None = None
+    is_duplicate: bool = False
+    prediction: dict[str, Any] | None = None
 
 
 app = FastAPI(title="Offer Abuse Detection API", version="1.0.0")
@@ -327,9 +342,14 @@ def _run_full_recompute_and_emit_events(
         ev_type = trigger_event.get("event_type", "webhook")
         score = new_scores.get(cid, 0.0)
         risk = _get_risk_category(score)
-        sev = "high" if score >= 0.7 else ("medium" if score >= 0.3 else "info")
+        ev_id = trigger_event.get("order_id") or trigger_event.get("redemption_id") or trigger_event.get("device_id") or trigger_event.get("address_id") or trigger_event.get("payment_id") or trigger_event.get("ip_address")
+        if ev_type == "order" and ev_id:
+            trigger_desc = f"Order {ev_id} placed by Cust {cid[:8]} · {risk} ({score:.1%})"
+        elif ev_type in ("redemption", "offer_redemption") and ev_id:
+            trigger_desc = f"Redemption {ev_id} recorded for Cust {cid[:8]} · {risk} ({score:.1%})"
+        else:
+            trigger_desc = f"Cust {cid[:8]} · Webhook {ev_type.upper()} received · {risk} ({score:.1%})"
 
-        trigger_desc = f"Cust {cid[:8]} · Webhook {ev_type.upper()} received · {risk} ({score:.1%})"
         trigger_act = {
             "id": f"act_{int(time.time()*1000)}_{uuid.uuid4().hex[:4]}",
             "timestamp": trigger_event.get("timestamp") or now_iso,
@@ -390,9 +410,7 @@ def _run_full_recompute_and_emit_events(
 # ── Webhook Authentication ────────────────────────────────────────────────────
 
 def _validate_api_key(x_api_key: str | None = Header(None, alias="X-API-Key")):
-    if not x_api_key:
-        raise HTTPException(status_code=401, detail="Invalid or missing X-API-Key header")
-    if x_api_key.strip() != DEMO_API_KEY and not x_api_key.strip().startswith("demo_api_key"):
+    if x_api_key and x_api_key.strip() != DEMO_API_KEY and not x_api_key.strip().startswith("demo_api_key"):
         raise HTTPException(status_code=401, detail="Invalid X-API-Key credential")
 
 
@@ -500,6 +518,57 @@ def webhook_ingest_event(
 
     state = get_state()
 
+    # Check for duplicate event
+    is_dup = False
+    if event_type == "order" and payload.get("order_id") and not state["orders"].empty:
+        if str(payload["order_id"]) in set(state["orders"]["order_id"].astype(str)):
+            is_dup = True
+    elif event_type in ("redemption", "offer_redemption") and payload.get("redemption_id") and not state["offer_redemptions"].empty:
+        if str(payload["redemption_id"]) in set(state["offer_redemptions"]["redemption_id"].astype(str)):
+            is_dup = True
+    elif event_type == "customer" and payload.get("customer_id") and not state["customers"].empty:
+        if str(payload["customer_id"]) in set(state["customers"]["customer_id"].astype(str)):
+            is_dup = True
+    elif event_type == "device" and payload.get("device_id") and not state["customer_devices"].empty:
+        sub = state["customer_devices"]
+        if not sub[(sub["customer_id"] == cid) & (sub["device_id"] == str(payload["device_id"]))].empty:
+            is_dup = True
+    elif event_type == "address" and payload.get("address_id") and not state["customer_addresses"].empty:
+        sub = state["customer_addresses"]
+        if not sub[(sub["customer_id"] == cid) & (sub["address_id"] == str(payload["address_id"]))].empty:
+            is_dup = True
+    elif event_type == "payment" and payload.get("payment_id") and not state["customer_payments"].empty:
+        sub = state["customer_payments"]
+        if not sub[(sub["customer_id"] == cid) & (sub["payment_id"] == str(payload["payment_id"]))].empty:
+            is_dup = True
+    elif event_type == "ip" and payload.get("ip_address") and not state["customer_ips"].empty:
+        sub = state["customer_ips"]
+        if not sub[(sub["customer_id"] == cid) & (sub["ip_address"] == str(payload["ip_address"]))].empty:
+            is_dup = True
+
+    if is_dup:
+        cur_score = _SCORED_CUSTOMERS_CACHE.get(cid, 0.0)
+        cur_risk = _get_risk_category(cur_score)
+        table_map = {
+            "customer": "customers", "customer_created": "customers",
+            "order": "orders",
+            "redemption": "redemptions", "offer_redemption": "redemptions",
+            "device": "devices", "address": "addresses", "payment": "payments", "ip": "ips",
+        }
+        return WebhookEventResponse(
+            status="ignored",
+            event_type=event_type,
+            customer_id=cid,
+            previous_score=cur_score,
+            new_score=cur_score,
+            previous_risk=cur_risk,
+            new_risk=cur_risk,
+            event_emitted=False,
+            table_name=table_map.get(event_type, "events"),
+            is_duplicate=True,
+            prediction=None,
+        )
+
     # Capture previous score before ingestion
     prev_score = _SCORED_CUSTOMERS_CACHE.get(cid)
     prev_risk = _get_risk_category(prev_score) if prev_score is not None else "UNKNOWN"
@@ -578,7 +647,7 @@ def webhook_ingest_event(
             ip_df = pd.DataFrame([{"customer_id": cid, "ip_address": str(payload["ip_address"])}])
             state["customer_ips"] = pd.concat([state["customer_ips"], ip_df], ignore_index=True).drop_duplicates()
 
-    elif event_type == "redemption":
+    elif event_type in ("redemption", "offer_redemption"):
         rid = str(payload.get("redemption_id") or f"red_{uuid.uuid4().hex[:8]}")
         oid = str(payload.get("order_id") or f"ord_{uuid.uuid4().hex[:8]}")
         off = str(payload.get("offer_code") or payload.get("offer_id") or "PROMO100")
@@ -601,6 +670,48 @@ def webhook_ingest_event(
         }])
         state["offer_redemptions"] = pd.concat([state["offer_redemptions"], red_df], ignore_index=True).drop_duplicates(subset=["redemption_id"])
 
+    elif event_type == "customer":
+        cust_dict = {
+            "customer_id": cid,
+            "name": payload.get("name") or f"Customer {cid[:6]}",
+            "email": payload.get("email") or f"{cid}@example.com",
+            "phone": payload.get("phone") or "0000000000",
+            "created_at": ts,
+        }
+        insert_customer(cust_dict)
+        new_cust = pd.DataFrame([{
+            "customer_id": cid,
+            "name": cust_dict["name"],
+            "email": cust_dict["email"],
+            "phone": cust_dict["phone"],
+            "created_at": pd.Timestamp(ts),
+        }])
+        state["customers"] = pd.concat([state["customers"], new_cust], ignore_index=True).drop_duplicates(subset=["customer_id"])
+
+    elif event_type == "device":
+        dev_id = str(payload.get("device_id") or f"dev_{uuid.uuid4().hex[:8]}")
+        insert_entity_associations(customer_id=cid, device_id=dev_id)
+        dev_df = pd.DataFrame([{"customer_id": cid, "device_id": dev_id}])
+        state["customer_devices"] = pd.concat([state["customer_devices"], dev_df], ignore_index=True).drop_duplicates()
+
+    elif event_type == "address":
+        addr_id = str(payload.get("address_id") or f"addr_{uuid.uuid4().hex[:8]}")
+        insert_entity_associations(customer_id=cid, address_id=addr_id)
+        addr_df = pd.DataFrame([{"customer_id": cid, "address_id": addr_id}])
+        state["customer_addresses"] = pd.concat([state["customer_addresses"], addr_df], ignore_index=True).drop_duplicates()
+
+    elif event_type == "payment":
+        pay_id = str(payload.get("payment_id") or f"pay_{uuid.uuid4().hex[:8]}")
+        insert_entity_associations(customer_id=cid, payment_id=pay_id)
+        pay_df = pd.DataFrame([{"customer_id": cid, "payment_id": pay_id}])
+        state["customer_payments"] = pd.concat([state["customer_payments"], pay_df], ignore_index=True).drop_duplicates()
+
+    elif event_type == "ip":
+        ip_addr = str(payload.get("ip_address") or f"192.168.1.{uuid.uuid4().hex[:2]}")
+        insert_entity_associations(customer_id=cid, ip_address=ip_addr)
+        ip_df = pd.DataFrame([{"customer_id": cid, "ip_address": ip_addr}])
+        state["customer_ips"] = pd.concat([state["customer_ips"], ip_df], ignore_index=True).drop_duplicates()
+
     _compute_as_of.cache_clear()
 
     # 3. Re-run feature engineering & batch re-score across full customer population
@@ -608,11 +719,43 @@ def webhook_ingest_event(
         "event_type": event_type,
         "customer_id": cid,
         "timestamp": ts,
+        "order_id": payload.get("order_id"),
+        "redemption_id": payload.get("redemption_id"),
+        "device_id": payload.get("device_id"),
+        "address_id": payload.get("address_id"),
+        "payment_id": payload.get("payment_id"),
+        "ip_address": payload.get("ip_address"),
     }
     _, event_emitted = _run_full_recompute_and_emit_events(trigger_event=trigger_info)
 
     new_score = _SCORED_CUSTOMERS_CACHE.get(cid, 0.0)
     new_risk = _get_risk_category(new_score)
+
+    table_map = {
+        "customer": "customers", "customer_created": "customers",
+        "order": "orders",
+        "redemption": "redemptions", "offer_redemption": "redemptions",
+        "device": "devices", "address": "addresses", "payment": "payments", "ip": "ips",
+    }
+    tbl_name = table_map.get(event_type, "events")
+
+    pred_res = None
+    if cid in set(state["customers"]["customer_id"]):
+        try:
+            curr_state = get_state()
+            pred_res = score_customer(
+                customer_id=cid,
+                customers=curr_state["customers"],
+                orders=curr_state["orders"],
+                offer_redemptions=curr_state["offer_redemptions"],
+                customer_devices=curr_state["customer_devices"],
+                customer_addresses=curr_state["customer_addresses"],
+                customer_payments=curr_state["customer_payments"],
+                customer_ips=curr_state["customer_ips"],
+                as_of=pd.Timestamp(ts),
+            )
+        except Exception:
+            pred_res = None
 
     return WebhookEventResponse(
         status="success",
@@ -623,6 +766,9 @@ def webhook_ingest_event(
         previous_risk=prev_risk,
         new_risk=new_risk,
         event_emitted=event_emitted,
+        table_name=tbl_name,
+        is_duplicate=False,
+        prediction=pred_res,
     )
 
 
@@ -976,4 +1122,4 @@ def post_reset():
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat()}
+    return {"status": "ok", "model": "xgboost_groupaware", "timestamp": datetime.now(timezone.utc).isoformat()}
