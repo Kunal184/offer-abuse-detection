@@ -2,34 +2,34 @@
   "stratified_results": {
     "LogisticRegression": {
       "val": {
-        "accuracy": 0.9866666666666667,
-        "precision": 0.9411764705882353,
-        "recall": 0.9411764705882353,
-        "f1": 0.9411764705882353,
-        "roc_auc": 0.9973463069438301,
-        "pr_auc": 0.976947211765551,
+        "accuracy": 0.9333333333333333,
+        "precision": 0.6296296296296297,
+        "recall": 1.0,
+        "f1": 0.7727272727272727,
+        "roc_auc": 0.989827509951349,
+        "pr_auc": 0.9343326629346045,
         "confusion_matrix": [
           [
-            132,
-            1
+            123,
+            10
           ],
           [
-            1,
-            16
+            0,
+            17
           ]
         ]
       },
       "test": {
-        "accuracy": 0.9666666666666667,
-        "precision": 0.7727272727272727,
+        "accuracy": 0.9133333333333333,
+        "precision": 0.5666666666666667,
         "recall": 1.0,
-        "f1": 0.8717948717948718,
-        "roc_auc": 0.9991154356479434,
-        "pr_auc": 0.9938080495356038,
+        "f1": 0.723404255319149,
+        "roc_auc": 0.988500663423264,
+        "pr_auc": 0.9009118188111086,
         "confusion_matrix": [
           [
-            128,
-            5
+            120,
+            13
           ],
           [
             0,
@@ -39,187 +39,187 @@
       },
       "feature_importance": [
         [
-          "total_spend",
-          3.3691216172456517
-        ],
-        [
           "time_to_first_order_hours",
-          2.552248145309229
+          3.9778240229143185
         ],
         [
           "time_to_first_redemption_hours",
-          2.4966586962849626
-        ],
-        [
-          "max_device_user_count",
-          1.2197318527830314
+          3.2039517400092743
         ],
         [
           "order_count",
-          1.2057726566322213
+          3.00090040597734
         ],
         [
-          "order_redemption_rate",
-          1.0201555290904174
+          "max_device_user_count",
+          0.6665660474898814
         ],
         [
           "max_address_user_count",
-          0.8967595394582685
+          0.616566333067383
         ],
         [
-          "max_ip_user_count",
-          0.3929449791419385
+          "order_redemption_rate",
+          0.6128549522288098
         ],
         [
           "redemption_count",
-          0.36663270703283896
+          0.4643527478939669
         ],
         [
           "unique_connected_customers",
-          0.29222943408414837
-        ],
-        [
-          "max_entity_degree",
-          0.1922168886947708
-        ],
-        [
-          "avg_entity_degree",
-          0.1365736884557088
+          0.4361677343535471
         ],
         [
           "account_age_days",
-          0.12478102376971388
+          0.42661015743952774
         ],
         [
           "cluster_size",
-          0.10450788924833837
+          0.3603453219647361
+        ],
+        [
+          "max_entity_degree",
+          0.32796807787805204
         ],
         [
           "max_payment_user_count",
-          0.034158288607794005
+          0.13018785047128834
         ],
         [
           "spend_to_discount_ratio",
-          0.030670707095543447
+          0.1186802961583285
+        ],
+        [
+          "total_spend",
+          0.11458018348698888
+        ],
+        [
+          "max_ip_user_count",
+          0.09987123366238884
+        ],
+        [
+          "avg_entity_degree",
+          0.04439635071573698
         ]
       ]
     },
     "RandomForest": {
       "val": {
-        "accuracy": 0.98,
-        "precision": 0.9375,
-        "recall": 0.8823529411764706,
-        "f1": 0.9090909090909091,
-        "roc_auc": 0.9986731534719151,
-        "pr_auc": 0.9895953479430989,
+        "accuracy": 0.9733333333333334,
+        "precision": 0.9333333333333333,
+        "recall": 0.8235294117647058,
+        "f1": 0.875,
+        "roc_auc": 0.9969040247678019,
+        "pr_auc": 0.9782120743034057,
         "confusion_matrix": [
           [
             132,
             1
           ],
           [
-            2,
-            15
+            3,
+            14
           ]
         ]
       },
       "test": {
-        "accuracy": 1.0,
+        "accuracy": 0.96,
         "precision": 1.0,
-        "recall": 1.0,
-        "f1": 1.0,
-        "roc_auc": 1.0,
-        "pr_auc": 1.0,
+        "recall": 0.6470588235294118,
+        "f1": 0.7857142857142857,
+        "roc_auc": 0.9933657673595755,
+        "pr_auc": 0.964207905384376,
         "confusion_matrix": [
           [
             133,
             0
           ],
           [
-            0,
-            17
+            6,
+            11
           ]
         ]
       },
       "feature_importance": [
         [
-          "spend_to_discount_ratio",
-          0.21538099503387548
-        ],
-        [
-          "total_spend",
-          0.19373453590455325
-        ],
-        [
           "time_to_first_order_hours",
-          0.18495924469757294
+          0.2935077209301016
         ],
         [
           "time_to_first_redemption_hours",
-          0.12868675559368514
-        ],
-        [
-          "order_redemption_rate",
-          0.04616117829372654
-        ],
-        [
-          "max_device_user_count",
-          0.04551874375041707
+          0.20822282805926726
         ],
         [
           "unique_connected_customers",
-          0.04231407987597967
+          0.07914271212338288
+        ],
+        [
+          "order_redemption_rate",
+          0.0716115992186877
         ],
         [
           "max_entity_degree",
-          0.03872689189978808
-        ],
-        [
-          "cluster_size",
-          0.024188623437904417
-        ],
-        [
-          "avg_entity_degree",
-          0.019919589403825846
-        ],
-        [
-          "account_age_days",
-          0.016779880496859897
+          0.07011197710518313
         ],
         [
           "order_count",
-          0.016222561799619492
+          0.04450177984143337
+        ],
+        [
+          "cluster_size",
+          0.04397487685639365
+        ],
+        [
+          "avg_entity_degree",
+          0.03958196709690263
+        ],
+        [
+          "spend_to_discount_ratio",
+          0.03879967783564379
+        ],
+        [
+          "total_spend",
+          0.025094400306670588
+        ],
+        [
+          "account_age_days",
+          0.02482126495658504
+        ],
+        [
+          "max_device_user_count",
+          0.020892591151753428
         ],
         [
           "max_address_user_count",
-          0.012457500270005039
+          0.014529560207642102
         ],
         [
           "max_ip_user_count",
-          0.009088159443405231
+          0.012575049016164826
         ],
         [
           "redemption_count",
-          0.00486091226762375
+          0.011418826514228484
         ],
         [
           "max_payment_user_count",
-          0.0010003478311582162
+          0.001213168779959577
         ]
       ]
     },
     "XGBoost": {
       "val": {
-        "accuracy": 0.9866666666666667,
-        "precision": 0.8947368421052632,
+        "accuracy": 0.9933333333333333,
+        "precision": 0.9444444444444444,
         "recall": 1.0,
-        "f1": 0.9444444444444444,
-        "roc_auc": 0.9991154356479435,
-        "pr_auc": 0.9938080495356038,
+        "f1": 0.9714285714285714,
+        "roc_auc": 0.9991154356479434,
+        "pr_auc": 0.9932718185313342,
         "confusion_matrix": [
           [
-            131,
-            2
+            132,
+            1
           ],
           [
             0,
@@ -228,86 +228,86 @@
         ]
       },
       "test": {
-        "accuracy": 0.9866666666666667,
-        "precision": 0.8947368421052632,
-        "recall": 1.0,
-        "f1": 0.9444444444444444,
-        "roc_auc": 0.9995577178239717,
-        "pr_auc": 0.9967320261437909,
+        "accuracy": 0.9733333333333334,
+        "precision": 1.0,
+        "recall": 0.7647058823529411,
+        "f1": 0.8666666666666667,
+        "roc_auc": 0.9951348960636887,
+        "pr_auc": 0.9725013308490817,
         "confusion_matrix": [
           [
-            131,
-            2
+            133,
+            0
           ],
           [
-            0,
-            17
+            4,
+            13
           ]
         ]
       },
       "feature_importance": [
         [
-          "spend_to_discount_ratio",
-          0.6342923641204834
+          "time_to_first_order_hours",
+          0.45706260204315186
         ],
         [
           "max_device_user_count",
-          0.13820458948612213
-        ],
-        [
-          "time_to_first_redemption_hours",
-          0.07914210855960846
-        ],
-        [
-          "time_to_first_order_hours",
-          0.046558454632759094
-        ],
-        [
-          "total_spend",
-          0.04101604223251343
-        ],
-        [
-          "order_count",
-          0.015217987820506096
+          0.1826433688402176
         ],
         [
           "order_redemption_rate",
-          0.011771547608077526
+          0.12686438858509064
         ],
         [
-          "avg_entity_degree",
-          0.009726940654218197
-        ],
-        [
-          "max_ip_user_count",
-          0.007030582521110773
+          "order_count",
+          0.07728700339794159
         ],
         [
           "unique_connected_customers",
-          0.006977942306548357
+          0.044817302376031876
         ],
         [
-          "max_address_user_count",
-          0.004481146577745676
+          "time_to_first_redemption_hours",
+          0.029275763779878616
         ],
         [
-          "cluster_size",
-          0.0043661510571837425
+          "max_ip_user_count",
+          0.02445913664996624
+        ],
+        [
+          "spend_to_discount_ratio",
+          0.016864577308297157
         ],
         [
           "account_age_days",
-          0.0010556101333349943
+          0.01644575223326683
+        ],
+        [
+          "total_spend",
+          0.011245065368711948
+        ],
+        [
+          "avg_entity_degree",
+          0.006378570105880499
         ],
         [
           "redemption_count",
-          0.0001585751015227288
+          0.005642400588840246
         ],
         [
-          "max_payment_user_count",
-          0.0
+          "cluster_size",
+          0.0006536139990203083
         ],
         [
           "max_entity_degree",
+          0.00036045577144250274
+        ],
+        [
+          "max_address_user_count",
+          0.0
+        ],
+        [
+          "max_payment_user_count",
           0.0
         ]
       ]
@@ -316,304 +316,304 @@
   "group_aware_results": {
     "LogisticRegression": {
       "val": {
-        "accuracy": 0.9577464788732394,
-        "precision": 0.6,
-        "recall": 1.0,
-        "f1": 0.75,
-        "roc_auc": 1.0,
-        "pr_auc": 1.0000000000000002,
+        "accuracy": 0.9027777777777778,
+        "precision": 0.4,
+        "recall": 0.5454545454545454,
+        "f1": 0.46153846153846156,
+        "roc_auc": 0.9535201640464799,
+        "pr_auc": 0.6936058638331365,
         "confusion_matrix": [
           [
-            127,
+            124,
+            9
+          ],
+          [
+            5,
             6
-          ],
-          [
-            0,
-            9
           ]
         ]
       },
       "test": {
-        "accuracy": 0.9710982658959537,
-        "precision": 0.9069767441860465,
-        "recall": 0.975,
-        "f1": 0.9397590361445783,
-        "roc_auc": 0.9983082706766917,
-        "pr_auc": 0.9945998657953088,
-        "confusion_matrix": [
-          [
-            129,
-            4
-          ],
-          [
-            1,
-            39
-          ]
-        ]
-      },
-      "feature_importance": [
-        [
-          "total_spend",
-          3.6976545533653034
-        ],
-        [
-          "time_to_first_order_hours",
-          2.7213479945313366
-        ],
-        [
-          "time_to_first_redemption_hours",
-          2.487500768836904
-        ],
-        [
-          "order_count",
-          1.5871938084619932
-        ],
-        [
-          "order_redemption_rate",
-          0.9241656962733013
-        ],
-        [
-          "max_device_user_count",
-          0.9056882638376097
-        ],
-        [
-          "max_address_user_count",
-          0.6432652228129553
-        ],
-        [
-          "redemption_count",
-          0.37848978645631326
-        ],
-        [
-          "max_ip_user_count",
-          0.33468480504470766
-        ],
-        [
-          "max_entity_degree",
-          0.3339960265422342
-        ],
-        [
-          "cluster_size",
-          0.3200660611105448
-        ],
-        [
-          "account_age_days",
-          0.20703195730634985
-        ],
-        [
-          "avg_entity_degree",
-          0.16705638533992792
-        ],
-        [
-          "spend_to_discount_ratio",
-          0.1441794011167134
-        ],
-        [
-          "max_payment_user_count",
-          0.07674921759674647
-        ],
-        [
-          "unique_connected_customers",
-          0.0361078130640772
-        ]
-      ]
-    },
-    "RandomForest": {
-      "val": {
-        "accuracy": 0.9929577464788732,
-        "precision": 1.0,
-        "recall": 0.8888888888888888,
-        "f1": 0.9411764705882353,
-        "roc_auc": 1.0,
-        "pr_auc": 1.0000000000000002,
-        "confusion_matrix": [
-          [
-            133,
-            0
-          ],
-          [
-            1,
-            8
-          ]
-        ]
-      },
-      "test": {
-        "accuracy": 0.9248554913294798,
-        "precision": 1.0,
-        "recall": 0.675,
-        "f1": 0.8059701492537313,
-        "roc_auc": 0.9991541353383457,
-        "pr_auc": 0.9967906478488957,
-        "confusion_matrix": [
-          [
-            133,
-            0
-          ],
-          [
-            13,
-            27
-          ]
-        ]
-      },
-      "feature_importance": [
-        [
-          "total_spend",
-          0.22326948474594296
-        ],
-        [
-          "spend_to_discount_ratio",
-          0.20089794236175657
-        ],
-        [
-          "time_to_first_order_hours",
-          0.18447699408400411
-        ],
-        [
-          "time_to_first_redemption_hours",
-          0.1295321478983429
-        ],
-        [
-          "unique_connected_customers",
-          0.04045064226439546
-        ],
-        [
-          "order_redemption_rate",
-          0.03821813409416607
-        ],
-        [
-          "max_entity_degree",
-          0.03811620182468942
-        ],
-        [
-          "cluster_size",
-          0.03452585289796639
-        ],
-        [
-          "max_device_user_count",
-          0.03347824290934351
-        ],
-        [
-          "avg_entity_degree",
-          0.020430285741819033
-        ],
-        [
-          "order_count",
-          0.016485650751067355
-        ],
-        [
-          "account_age_days",
-          0.014663720577734782
-        ],
-        [
-          "max_ip_user_count",
-          0.009366635816451505
-        ],
-        [
-          "redemption_count",
-          0.00713583094378757
-        ],
-        [
-          "max_address_user_count",
-          0.006471619858447025
-        ],
-        [
-          "max_payment_user_count",
-          0.0024806132300855053
-        ]
-      ]
-    },
-    "XGBoost": {
-      "val": {
-        "accuracy": 0.9859154929577465,
-        "precision": 0.8181818181818182,
-        "recall": 1.0,
-        "f1": 0.9,
-        "roc_auc": 0.9999999999999999,
-        "pr_auc": 1.0,
-        "confusion_matrix": [
-          [
-            131,
-            2
-          ],
-          [
-            0,
-            9
-          ]
-        ]
-      },
-      "test": {
-        "accuracy": 0.953757225433526,
-        "precision": 1.0,
-        "recall": 0.8,
+        "accuracy": 0.9529411764705882,
+        "precision": 0.9142857142857143,
+        "recall": 0.8648648648648649,
         "f1": 0.8888888888888888,
-        "roc_auc": 0.9966165413533834,
-        "pr_auc": 0.989777150068406,
+        "roc_auc": 0.9912619386303597,
+        "pr_auc": 0.9703771705893947,
         "confusion_matrix": [
           [
-            133,
-            0
+            130,
+            3
           ],
           [
-            8,
+            5,
             32
           ]
         ]
       },
       "feature_importance": [
         [
-          "total_spend",
-          0.4334019422531128
+          "time_to_first_order_hours",
+          3.863656721565383
         ],
         [
           "time_to_first_redemption_hours",
-          0.15468598902225494
-        ],
-        [
-          "spend_to_discount_ratio",
-          0.12828296422958374
+          3.2557322632143406
         ],
         [
           "order_count",
-          0.06449661403894424
+          3.0200404522187196
         ],
         [
-          "unique_connected_customers",
-          0.061883773654699326
+          "total_spend",
+          1.4222648559977695
         ],
         [
           "max_device_user_count",
-          0.04697755351662636
-        ],
-        [
-          "avg_entity_degree",
-          0.03339911997318268
-        ],
-        [
-          "time_to_first_order_hours",
-          0.02781590260565281
-        ],
-        [
-          "max_ip_user_count",
-          0.023229844868183136
+          0.8923537415108161
         ],
         [
           "order_redemption_rate",
-          0.021719494834542274
+          0.7649511821129095
         ],
         [
           "account_age_days",
-          0.0037903280463069677
+          0.4757991078546495
+        ],
+        [
+          "unique_connected_customers",
+          0.46783148285651316
+        ],
+        [
+          "redemption_count",
+          0.32205101189089186
+        ],
+        [
+          "max_entity_degree",
+          0.20336653541070887
+        ],
+        [
+          "spend_to_discount_ratio",
+          0.18669472294565786
+        ],
+        [
+          "max_ip_user_count",
+          0.08239970743007745
         ],
         [
           "cluster_size",
-          0.0003164889640174806
+          0.06439110056262969
         ],
         [
           "max_address_user_count",
-          0.0
+          0.049595239735994716
         ],
         [
           "max_payment_user_count",
+          0.03826262283970512
+        ],
+        [
+          "avg_entity_degree",
+          0.016764667315799817
+        ]
+      ]
+    },
+    "RandomForest": {
+      "val": {
+        "accuracy": 0.9791666666666666,
+        "precision": 1.0,
+        "recall": 0.7272727272727273,
+        "f1": 0.8421052631578947,
+        "roc_auc": 0.9969241285030759,
+        "pr_auc": 0.9674931129476584,
+        "confusion_matrix": [
+          [
+            133,
+            0
+          ],
+          [
+            3,
+            8
+          ]
+        ]
+      },
+      "test": {
+        "accuracy": 0.9647058823529412,
+        "precision": 1.0,
+        "recall": 0.8378378378378378,
+        "f1": 0.9117647058823529,
+        "roc_auc": 0.999187157081894,
+        "pr_auc": 0.9971915235073128,
+        "confusion_matrix": [
+          [
+            133,
+            0
+          ],
+          [
+            6,
+            31
+          ]
+        ]
+      },
+      "feature_importance": [
+        [
+          "time_to_first_order_hours",
+          0.29053566749376075
+        ],
+        [
+          "time_to_first_redemption_hours",
+          0.22471282158472078
+        ],
+        [
+          "order_redemption_rate",
+          0.09280453976248614
+        ],
+        [
+          "order_count",
+          0.05260585069919403
+        ],
+        [
+          "unique_connected_customers",
+          0.05148394162553636
+        ],
+        [
+          "max_device_user_count",
+          0.050932459305500985
+        ],
+        [
+          "max_entity_degree",
+          0.04764008098253235
+        ],
+        [
+          "spend_to_discount_ratio",
+          0.04416758606783181
+        ],
+        [
+          "cluster_size",
+          0.03586578861866987
+        ],
+        [
+          "account_age_days",
+          0.02837601794060701
+        ],
+        [
+          "avg_entity_degree",
+          0.028116264879208982
+        ],
+        [
+          "total_spend",
+          0.02769271269735275
+        ],
+        [
+          "redemption_count",
+          0.013027019998182765
+        ],
+        [
+          "max_ip_user_count",
+          0.005602629506679741
+        ],
+        [
+          "max_payment_user_count",
+          0.004259672060752107
+        ],
+        [
+          "max_address_user_count",
+          0.0021769467769835495
+        ]
+      ]
+    },
+    "XGBoost": {
+      "val": {
+        "accuracy": 0.9791666666666666,
+        "precision": 0.9,
+        "recall": 0.8181818181818182,
+        "f1": 0.8571428571428571,
+        "roc_auc": 0.9986329460013671,
+        "pr_auc": 0.9841597796143252,
+        "confusion_matrix": [
+          [
+            132,
+            1
+          ],
+          [
+            2,
+            9
+          ]
+        ]
+      },
+      "test": {
+        "accuracy": 0.9764705882352941,
+        "precision": 1.0,
+        "recall": 0.8918918918918919,
+        "f1": 0.9428571428571428,
+        "roc_auc": 0.9930908351960984,
+        "pr_auc": 0.9860432514894757,
+        "confusion_matrix": [
+          [
+            133,
+            0
+          ],
+          [
+            4,
+            33
+          ]
+        ]
+      },
+      "feature_importance": [
+        [
+          "time_to_first_order_hours",
+          0.4809888005256653
+        ],
+        [
+          "order_redemption_rate",
+          0.1795397251844406
+        ],
+        [
+          "max_device_user_count",
+          0.11459660530090332
+        ],
+        [
+          "order_count",
+          0.08406718075275421
+        ],
+        [
+          "max_address_user_count",
+          0.04581525921821594
+        ],
+        [
+          "unique_connected_customers",
+          0.027208931744098663
+        ],
+        [
+          "account_age_days",
+          0.02409161627292633
+        ],
+        [
+          "time_to_first_redemption_hours",
+          0.01875889301300049
+        ],
+        [
+          "total_spend",
+          0.012041888199746609
+        ],
+        [
+          "spend_to_discount_ratio",
+          0.007660602685064077
+        ],
+        [
+          "max_ip_user_count",
+          0.003186534158885479
+        ],
+        [
+          "redemption_count",
+          0.002044013701379299
+        ],
+        [
+          "max_payment_user_count",
+          0.0
+        ],
+        [
+          "cluster_size",
           0.0
         ],
         [
@@ -621,7 +621,7 @@
           0.0
         ],
         [
-          "redemption_count",
+          "avg_entity_degree",
           0.0
         ]
       ]
@@ -629,73 +629,76 @@
   },
   "group_split_distribution": {
     "train_groups": {
-      "abuse_group_11_slow_drip": 7,
-      "abuse_group_8_patient": 5,
-      "abuse_group_17_volume": 6,
-      "abuse_group_20_volume": 4,
-      "abuse_group_13_patient": 3,
-      "abuse_group_12_slow_drip": 7,
-      "abuse_group_9_fast": 5,
-      "abuse_group_15_ghost": 4,
-      "abuse_group_19_evasive_stealth": 5,
-      "abuse_group_2_evasive_proxy": 6,
-      "abuse_group_14_evasive_proxy": 3,
-      "abuse_group_18_fast": 7
+      "abuse_group_12_ghost": 6,
+      "abuse_group_7_volume": 6,
+      "abuse_group_17_volume": 7,
+      "abuse_group_20_ghost": 7,
+      "abuse_group_14_patient": 4,
+      "abuse_group_13_slow_drip": 6,
+      "abuse_group_9_evasive_stealth": 3,
+      "abuse_group_16_evasive_proxy": 4,
+      "abuse_group_19_evasive_proxy": 3,
+      "abuse_group_3_fast": 7,
+      "abuse_group_15_evasive_stealth": 7,
+      "abuse_group_18_slow_drip": 5
     },
     "val_groups": {
-      "abuse_group_21_evasive_stealth": 3,
-      "abuse_group_5_ghost": 6
+      "abuse_group_21_fast": 5,
+      "abuse_group_5_patient": 6
     },
     "test_groups": {
-      "abuse_group_3_fast": 7,
-      "abuse_group_10_slow_drip": 5,
-      "abuse_group_7_volume": 7,
-      "abuse_group_4_ghost": 3,
-      "abuse_group_1_evasive_proxy": 5,
-      "abuse_group_16_evasive_stealth": 6,
-      "abuse_group_6_patient": 7
+      "abuse_group_1_fast": 4,
+      "abuse_group_4_slow_drip": 6,
+      "abuse_group_6_volume": 6,
+      "abuse_group_10_ghost": 7,
+      "abuse_group_11_evasive_proxy": 4,
+      "abuse_group_8_evasive_stealth": 4,
+      "abuse_group_2_patient": 6
     }
   },
   "leakage_analysis": {
     "n_abuse_groups": 21,
     "abuse_group_sizes": {
-      "abuse_group_10_slow_drip": 5,
-      "abuse_group_11_slow_drip": 7,
-      "abuse_group_12_slow_drip": 7,
-      "abuse_group_13_patient": 3,
-      "abuse_group_14_evasive_proxy": 3,
-      "abuse_group_15_ghost": 4,
-      "abuse_group_16_evasive_stealth": 6,
-      "abuse_group_17_volume": 6,
-      "abuse_group_18_fast": 7,
-      "abuse_group_19_evasive_stealth": 5,
-      "abuse_group_1_evasive_proxy": 5,
-      "abuse_group_20_volume": 4,
-      "abuse_group_21_evasive_stealth": 3,
-      "abuse_group_2_evasive_proxy": 6,
+      "abuse_group_10_ghost": 7,
+      "abuse_group_11_evasive_proxy": 4,
+      "abuse_group_12_ghost": 6,
+      "abuse_group_13_slow_drip": 6,
+      "abuse_group_14_patient": 4,
+      "abuse_group_15_evasive_stealth": 7,
+      "abuse_group_16_evasive_proxy": 4,
+      "abuse_group_17_volume": 7,
+      "abuse_group_18_slow_drip": 5,
+      "abuse_group_19_evasive_proxy": 3,
+      "abuse_group_1_fast": 4,
+      "abuse_group_20_ghost": 7,
+      "abuse_group_21_fast": 5,
+      "abuse_group_2_patient": 6,
       "abuse_group_3_fast": 7,
-      "abuse_group_4_ghost": 3,
-      "abuse_group_5_ghost": 6,
-      "abuse_group_6_patient": 7,
-      "abuse_group_7_volume": 7,
-      "abuse_group_8_patient": 5,
-      "abuse_group_9_fast": 5
+      "abuse_group_4_slow_drip": 6,
+      "abuse_group_5_patient": 6,
+      "abuse_group_6_volume": 6,
+      "abuse_group_7_volume": 6,
+      "abuse_group_8_evasive_stealth": 4,
+      "abuse_group_9_evasive_stealth": 3
     },
-    "total_abusers": 111,
+    "total_abusers": 113,
     "total_customers": 1000,
     "leaked_groups_naive_split": [
-      "abuse_group_11_slow_drip",
-      "abuse_group_12_slow_drip",
-      "abuse_group_16_evasive_stealth",
+      "abuse_group_10_ghost",
+      "abuse_group_11_evasive_proxy",
+      "abuse_group_13_slow_drip",
       "abuse_group_17_volume",
-      "abuse_group_19_evasive_stealth",
-      "abuse_group_1_evasive_proxy",
-      "abuse_group_21_evasive_stealth",
-      "abuse_group_3_fast",
-      "abuse_group_8_patient",
-      "abuse_group_9_fast"
+      "abuse_group_18_slow_drip",
+      "abuse_group_20_ghost",
+      "abuse_group_2_patient",
+      "abuse_group_4_slow_drip",
+      "abuse_group_5_patient",
+      "abuse_group_6_volume",
+      "abuse_group_7_volume",
+      "abuse_group_8_evasive_stealth",
+      "abuse_group_9_evasive_stealth"
     ],
-    "n_leaked_groups": 10,
-    "explanation": "GROUP-AWARE LEAKAGE ANALYSIS\n  Total customers: 1000, Abusers: 111, Abuse groups: 21\n  Naive stratified split leaked 10 groups across train/test: ['abuse_group_11_slow_drip', 'abuse_group_12_slow_drip', 'abuse_group_16_evasive_stealth', 'abuse_group_17_volume', 'abuse_group_19_evasive_stealth', 'abuse_group_1_evasive_proxy', 'abuse_group_21_evasive_stealth', 'abuse_group_3_fast', 'abuse_group_8_patient', 'abuse_group_9_fast']\n  [!] Members of the same abuse ring appear in BOTH train and test in stratified splits. Because graph features (cluster_size, unique_connected_customers, max_*_user_count) are derived from shared entity networks, accounts in the same ring share correlated signals."
+    "n_leaked_groups": 13,
+    "explanation": "GROUP-AWARE LEAKAGE ANALYSIS\n  Total customers: 1000, Abusers: 113, Abuse groups: 21\n  Naive stratified split leaked 13 groups across train/test: ['abuse_group_10_ghost', 'abuse_group_11_evasive_proxy', 'abuse_group_13_slow_drip', 'abuse_group_17_volume', 'abuse_group_18_slow_drip', 'abuse_group_20_ghost', 'abuse_group_2_patient', 'abuse_group_4_slow_drip', 'abuse_group_5_patient', 'abuse_group_6_volume', 'abuse_group_7_volume', 'abuse_group_8_evasive_stealth', 'abuse_group_9_evasive_stealth']\n  [!] Members of the same abuse ring appear in BOTH train and test in stratified splits. Because graph features (cluster_size, unique_connected_customers, max_*_user_count) are derived from shared entity networks, accounts in the same ring share correlated signals."
   }
 }

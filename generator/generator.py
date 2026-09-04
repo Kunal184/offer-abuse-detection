@@ -327,7 +327,7 @@ def inject_abuse_groups(customers, customer_devices, customer_addresses, custome
                 is_failed = random.random() < 0.08
                 
                 order_id = str(uuid.uuid4())
-                amount = round(random.uniform(400, 1500), 2)
+                amount = round(random.uniform(300, 8000), 2)
                 
                 orders = pd.concat([orders, pd.DataFrame([{
                     "order_id": order_id,
@@ -338,8 +338,17 @@ def inject_abuse_groups(customers, customer_devices, customer_addresses, custome
                 }])], ignore_index=True)
                 
                 if not is_failed and random.random() < 0.85: # High redemption rate for abusers
-                    off = offers.sample(1).iloc[0]
-                    discount = min(amount * 0.3, off["max_discount"])
+                    welcome_offer = offers[offers["code"] == "WELCOME50"].iloc[0]
+                    ref_offer = offers[offers["code"] == "REFDOUBLE"].iloc[0]
+                    if o_idx == 0 and random.random() < 0.80:
+                        off = welcome_offer
+                    elif group_type in ["fast", "ghost", "evasive_proxy"] and random.random() < 0.60:
+                        off = ref_offer
+                    else:
+                        off = offers.sample(1).iloc[0]
+
+                    pct = 0.5 if off["code"] == "WELCOME50" else (0.4 if off["code"] == "REFDOUBLE" else 0.2)
+                    discount = round(min(amount * pct, float(off["max_discount"])), 2)
                     offer_redemptions = pd.concat([offer_redemptions, pd.DataFrame([{
                         "redemption_id": str(uuid.uuid4()),
                         "customer_id": u,

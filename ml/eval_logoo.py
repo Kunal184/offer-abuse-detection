@@ -149,14 +149,12 @@ def run_logoo_benchmark():
     print("=" * 80)
 
     res_a = eval_logoo_config(df, FEATURE_SET_A, "CONFIG A (16 feat: average_spend baseline)")
-    res_b = eval_logoo_config(df, FEATURE_SET_B, "CONFIG B (17 feat: current branch with order_amount_std)")
-    res_c = eval_logoo_config(df, FEATURE_SET_C, "CONFIG C (16 feat: CLEAN model, order_amount_std ABLATED)")
+    res_c = eval_logoo_config(df, FEATURE_SET_C, "CONFIG C (16 feat: CLEAN shortcut-free model)")
 
     print("\n" + "=" * 80)
     print("LOGOO COMPARATIVE SUMMARY:")
-    print(f"  Config A (Original Baseline - average_spend):     LOGOO F1 = {res_a['f1'].mean():.4f}")
-    print(f"  Config B (Current Branch - order_amount_std):     LOGOO F1 = {res_b['f1'].mean():.4f}")
-    print(f"  Config C (Clean Model - order_amount_std ablated): LOGOO F1 = {res_c['f1'].mean():.4f}")
+    print(f"  Config A (Old Baseline - average_spend):    LOGOO F1 = {res_a['f1'].mean():.4f}")
+    print(f"  Config C (Clean Model - shortcut-free):      LOGOO F1 = {res_c['f1'].mean():.4f}")
     print("=" * 80)
 
 
