@@ -293,11 +293,11 @@ export default function LandingPage() {
             >
               <div>
                 <div className="quadrant-tag">01 — THE SIGNAL</div>
-                <div className="quadrant-giant-number">16</div>
-                <h3 className="quadrant-headline">16 FEATURES ANALYZED</h3>
+                <div className="quadrant-giant-number">21</div>
+                <h3 className="quadrant-headline">21 FEATURES ANALYZED</h3>
               </div>
               <p className="quadrant-subtext">
-                Behavior, timing, redemption and relationship signals combine into a single risk assessment.
+                Behavior, timing, redemption, velocity and relationship signals combine into a single risk assessment.
               </p>
             </div>
 
@@ -382,8 +382,8 @@ export default function LandingPage() {
                   </div>
                   
                   <div className="f1-widget-content">
-                    <div className="f1-widget-val">93.5%</div>
-                    <div className="f1-widget-label">F1 SCORE · 90.0% RECALL</div>
+                    <div className="f1-widget-val">89.5%</div>
+                    <div className="f1-widget-label">F1 SCORE · 100% PRECISION</div>
                   </div>
                 </div>
               </div>
