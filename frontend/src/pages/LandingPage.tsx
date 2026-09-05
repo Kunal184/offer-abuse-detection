@@ -1,9 +1,17 @@
-import { useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import './LandingPage.css';
 
 export default function LandingPage() {
+  const navigate = useNavigate();
   const animatedRefs = useRef<(HTMLElement | HTMLDivElement | null)[]>([]);
+
+  // Login dropdown state
+  const [showLogin, setShowLogin] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -24,16 +32,103 @@ export default function LandingPage() {
     return () => observer.disconnect();
   }, []);
 
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowLogin(false);
+        setLoginError('');
+      }
+    }
+    if (showLogin) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showLogin]);
+
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (username === 'payBros' && password === '1234') {
+      setLoginError('');
+      navigate('/overview');
+    } else {
+      setLoginError('Invalid username or password');
+    }
+  };
+
   return (
     <div className="landing-container">
-      {/* SECTION 1: HERO VIEWPORT (Completely untouched) */}
+      {/* SECTION 1: HERO VIEWPORT */}
       <section className="landing-hero-section">
         {/* Top Header */}
         <header className="landing-header">
           <div className="landing-logo">HEX</div>
-          <Link to="/overview" className="landing-action">
-            ENTER DASHBOARD <span className="arrow">→</span>
-          </Link>
+
+          {/* Enter Dashboard Button & Dropdown Container */}
+          <div className="landing-login-wrapper" ref={dropdownRef}>
+            <button
+              className={`landing-action ${showLogin ? 'active' : ''}`}
+              onClick={() => {
+                setShowLogin(!showLogin);
+                setLoginError('');
+              }}
+            >
+              ENTER DASHBOARD <span className="arrow">{showLogin ? '▲' : '→'}</span>
+            </button>
+
+            {/* Animated Login Dropdown Box */}
+            <div className={`login-dropdown-popover ${showLogin ? 'open' : ''}`}>
+              <div className="login-dropdown-header">
+                <span className="login-dropdown-title">PAY BROS AUTHENTICATION</span>
+                <span className="login-dropdown-badge">DEMO</span>
+              </div>
+
+              <form onSubmit={handleLoginSubmit} className="login-dropdown-form">
+                <div className="login-field-group">
+                  <label className="login-field-label">USERNAME</label>
+                  <input
+                    type="text"
+                    className="login-field-input"
+                    placeholder="payBros"
+                    value={username}
+                    onChange={(e) => {
+                      setUsername(e.target.value);
+                      setLoginError('');
+                    }}
+                    autoFocus={showLogin}
+                  />
+                </div>
+
+                <div className="login-field-group">
+                  <label className="login-field-label">PASSWORD</label>
+                  <input
+                    type="password"
+                    className="login-field-input"
+                    placeholder="••••"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setLoginError('');
+                    }}
+                  />
+                </div>
+
+                {loginError && (
+                  <div className="login-error-msg">
+                    ✕ {loginError}
+                  </div>
+                )}
+
+                <button type="submit" className="login-submit-btn">
+                  SIGN IN TO CONSOLE <span className="arrow">→</span>
+                </button>
+
+                <div className="login-hint-box">
+                  <code>payBros</code> / <code>1234</code>
+                </div>
+              </form>
+            </div>
+          </div>
         </header>
 
         {/* Hero Headline & Subtext */}

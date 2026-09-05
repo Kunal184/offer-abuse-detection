@@ -52,6 +52,10 @@
   align-items: center;
   gap: 0.5rem;
   text-decoration: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
   transition: opacity 0.2s ease;
 }
 
@@ -66,6 +70,159 @@
 
 .landing-action:hover .arrow {
   transform: translateX(4px);
+}
+
+/* Login Wrapper & Animated Dropdown Popover */
+.landing-login-wrapper {
+  position: relative;
+  display: inline-block;
+}
+
+.login-dropdown-popover {
+  position: absolute;
+  top: calc(100% + 14px);
+  right: 0;
+  width: 280px;
+  background-color: #0D0D0E;
+  border: 1px solid rgba(229, 52, 28, 0.4);
+  border-radius: 6px;
+  padding: 1.25rem;
+  box-sizing: border-box;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(229, 52, 28, 0.2);
+  z-index: 100;
+  
+  /* Popdown Animation */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-12px) scale(0.96);
+  transform-origin: top right;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0.25s step-end;
+}
+
+.login-dropdown-popover.open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0s step-start;
+}
+
+.login-dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(244, 243, 238, 0.1);
+}
+
+.login-dropdown-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #F4F3EE;
+}
+
+.login-dropdown-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: #E5341C;
+  background: rgba(229, 52, 28, 0.15);
+  border: 1px solid rgba(229, 52, 28, 0.3);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.login-dropdown-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.login-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.login-field-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #E5341C;
+}
+
+.login-field-input {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.65rem;
+  background-color: #161618;
+  border: 1px solid rgba(244, 243, 238, 0.15);
+  border-radius: 4px;
+  color: #F4F3EE;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.login-field-input:focus {
+  border-color: #E5341C;
+}
+
+.login-error-msg {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #FF4D4D;
+  background-color: rgba(255, 77, 77, 0.1);
+  border: 1px solid rgba(255, 77, 77, 0.3);
+  padding: 0.4rem 0.5rem;
+  border-radius: 3px;
+}
+
+.login-submit-btn {
+  margin-top: 0.2rem;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #101114;
+  background-color: #E5341C;
+  border: none;
+  border-radius: 4px;
+  padding: 0.6rem 0.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.login-submit-btn:hover {
+  background-color: #FF3E24;
+  transform: translateY(-1px);
+}
+
+.login-hint-box {
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  color: #8C8A88;
+  margin-top: 0.2rem;
+}
+
+.login-hint-box code {
+  color: #E5341C;
+  background: rgba(229, 52, 28, 0.1);
+  padding: 1px 4px;
+  border-radius: 2px;
 }
 
 .landing-hero {
