@@ -80,10 +80,6 @@ export default function AnalyticsPage() {
           <h1 className="analytics-title">MODEL ANALYTICS & SHAP EVALUATION</h1>
           <p className="analytics-subtitle">XGBOOST GROUP-AWARE GENERALIZATION PERFORMANCE</p>
         </div>
-        <div className="badge-tape-group">
-          <span className="badge-tape-high">F1: 93.5%</span>
-          <span className="badge-tape-clear">FROZEN TEST SET</span>
-        </div>
       </div>
 
       {/* KPI Grid */}
