@@ -192,8 +192,9 @@ export async function loadOverview(): Promise<OverviewStats> {
 }
 
 export async function loadActivityFeed(): Promise<import('../types').ActivityEvent[]> {
-  return apiGet<import('../types').ActivityEvent[]>('/v1/activity/feed');
+  return apiGet<import('../types').ActivityEvent[]>('/v1/activity');
 }
+
 
 /* ─── Graph & Clusters ─────────────────────────────────────────── */
 
@@ -224,6 +225,10 @@ export async function healthCheck(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+export async function simulateCustomers(): Promise<{ status: string; simulatedCount: number; overview: OverviewStats }> {
+  return apiPost('/v1/simulate', {});
 }
 
 export async function resetDatabase(): Promise<{ status: string; message: string }> {

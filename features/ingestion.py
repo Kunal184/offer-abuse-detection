@@ -39,11 +39,16 @@ class ValidationReport:
 
 
 def _normalize_timestamp_series(series: pd.Series) -> pd.Series:
-    """Coerce timestamps to UTC naive Timestamp objects."""
-    dt_series = pd.to_datetime(series, errors="coerce")
-    if hasattr(dt_series.dt, "tz") and dt_series.dt.tz is not None:
-        dt_series = dt_series.dt.tz_convert("UTC").dt.tz_localize(None)
-    return dt_series
+    """Coerce timestamps to UTC naive Timestamp objects safely across mixed timezone series."""
+    def _parse_ts(val: Any) -> pd.Timestamp | None:
+        if pd.isna(val) or val is None:
+            return pd.NaT
+        ts = pd.to_datetime(val, errors="coerce", utc=True)
+        if pd.isna(ts):
+            return pd.NaT
+        return ts.tz_localize(None)
+
+    return series.apply(_parse_ts)
 
 
 def validate_and_clean_table(

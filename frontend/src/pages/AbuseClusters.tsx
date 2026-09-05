@@ -287,28 +287,39 @@ function ForceRelationshipGraph({
     return set;
   }, [clusters]);
 
-  // Extract relevant subgraph for simulation
+  // Extract relevant subgraph for simulation with strict ID normalization
   const { subNodes, subLinks } = useMemo(() => {
     let targetNodeIds = new Set<string>();
 
     if (selectedCluster) {
-      (selectedCluster.customers || selectedCluster.customerIds || []).forEach((cid: string) => targetNodeIds.add(cid));
-      (selectedCluster.entities || []).forEach((eid: string) => targetNodeIds.add(eid));
-    } else {
-      // Show nodes from top clusters
-      const topClusters = clusters.slice(0, 8);
-      topClusters.forEach((c) => {
-        (c.customers || c.customerIds || []).forEach((cid: string) => targetNodeIds.add(cid));
-        (c.entities || []).forEach((eid: string) => targetNodeIds.add(eid));
+      const custs = selectedCluster.customers || selectedCluster.customerIds || [];
+      custs.forEach((cid: string) => {
+        const clean = String(cid).replace(/^c_/, '');
+        targetNodeIds.add(clean);
+        targetNodeIds.add(`c_${clean}`);
       });
-      // Fallback if no clusters
+      (selectedCluster.entities || []).forEach((eid: string) => targetNodeIds.add(String(eid)));
+    } else {
+      // Default view: render top 4 clusters cleanly separated
+      const topClusters = clusters.slice(0, 4);
+      topClusters.forEach((c) => {
+        const custs = c.customers || c.customerIds || [];
+        custs.forEach((cid: string) => {
+          const clean = String(cid).replace(/^c_/, '');
+          targetNodeIds.add(clean);
+          targetNodeIds.add(`c_${clean}`);
+        });
+        (c.entities || []).forEach((eid: string) => targetNodeIds.add(String(eid)));
+      });
+
       if (targetNodeIds.size === 0) {
-        nodes.slice(0, 100).forEach((n) => targetNodeIds.add(n.id));
+        nodes.slice(0, 40).forEach((n) => targetNodeIds.add(n.id));
       }
     }
 
+    // Always deep copy nodes and links so D3 force object mutations don't corrupt state
     const filteredNodes: GraphNodeItem[] = nodes
-      .filter((n) => targetNodeIds.has(n.id))
+      .filter((n) => targetNodeIds.has(n.id) || targetNodeIds.has(n.id.replace(/^c_/, '')))
       .map((n) => ({ ...n }));
 
     const filteredNodeIds = new Set(filteredNodes.map((n) => n.id));
@@ -319,10 +330,16 @@ function ForceRelationshipGraph({
         const t = typeof l.target === 'object' ? l.target.id : l.target;
         return filteredNodeIds.has(s) && filteredNodeIds.has(t);
       })
-      .map((l) => ({ ...l }));
+      .map((l) => ({
+        source: typeof l.source === 'object' ? l.source.id : l.source,
+        target: typeof l.target === 'object' ? l.target.id : l.target,
+        sourceType: l.sourceType || 'linked',
+        targetType: l.targetType || 'linked',
+      }));
 
     return { subNodes: filteredNodes, subLinks: filteredLinks };
   }, [nodes, links, clusters, selectedCluster]);
+
 
   useEffect(() => {
     if (!svgRef.current || !containerRef.current || subNodes.length === 0) return;

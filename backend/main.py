@@ -1163,6 +1163,133 @@ def get_clusters(raw_req: Request):
 
 # ── Analytics Endpoints ──────────────────────────────────────────────────────
 
+@app.post("/v1/simulate")
+def simulate_customers(request: Request):
+    """Simulate streaming new customer activity (both legitimate shoppers and sybil abuse accounts) into live dataset."""
+    import random
+    from datetime import datetime, timezone
+    import uuid
+    api_key_val = request.headers.get("X-API-Key") or request.headers.get("x-api-key")
+    tenant_id = "default" if _is_default_merchant(api_key_val) else (api_key_val.strip() if api_key_val else "default")
+    dataset = get_state(api_key_val)
+
+    now_str = datetime.now(timezone.utc).isoformat()
+    sim_batch_id = str(uuid.uuid4())[:8]
+
+    # Dynamic Randomization of Ingested Scenario
+    archetypes = [
+        {"name": "Evasive Proxy Ring", "size": random.randint(2, 5), "share_device": True, "share_ip": True, "share_pay": False, "discount": 250.0},
+        {"name": "Slow Drip Sybil Ring", "size": random.randint(3, 6), "share_device": False, "share_ip": True, "share_pay": True, "discount": 400.0},
+        {"name": "Organic Customer Surge", "size": 0, "share_device": False, "share_ip": False, "share_pay": False, "discount": 0.0},
+        {"name": "High-Volume Voucher Swarm", "size": random.randint(4, 7), "share_device": True, "share_ip": True, "share_pay": True, "discount": 600.0},
+    ]
+
+    selected_scenario = random.choice(archetypes)
+    sybil_count = selected_scenario["size"]
+    legit_count = random.randint(1, 4)
+
+    shared_device = f"dev_sim_{sim_batch_id}" if selected_scenario["share_device"] else None
+    shared_ip = f"192.168.1.{random.randint(10, 250)}" if selected_scenario["share_ip"] else None
+    shared_address = f"addr_sim_{sim_batch_id}"
+    shared_payment = f"pay_sim_{sim_batch_id}" if selected_scenario["share_pay"] else None
+
+    created_customers = []
+
+    # 1. Add Sybil Ring Accounts (if scenario includes abuse ring)
+    for i in range(1, sybil_count + 1):
+        cid = f"sim_abuser_{sim_batch_id}_{i}"
+        dev_id = shared_device or f"dev_solo_{sim_batch_id}_{i}"
+        ip_addr = shared_ip or f"172.16.0.{random.randint(2, 254)}"
+        pay_id = shared_payment or f"pay_solo_{sim_batch_id}_{i}"
+
+        created_customers.append({"customer_id": cid, "type": "abuser"})
+        c_row = {"customer_id": cid, "name": f"Sybil User {i} ({sim_batch_id})", "email": f"sybil_{sim_batch_id}_{i}@tempmail.com", "phone": "+1555019200", "created_at": now_str}
+        dataset["customers"] = pd.concat([dataset["customers"], pd.DataFrame([c_row])], ignore_index=True)
+
+        dataset["customer_devices"] = pd.concat([dataset["customer_devices"], pd.DataFrame([{"customer_id": cid, "device_id": dev_id}])], ignore_index=True)
+        dataset["customer_ips"] = pd.concat([dataset["customer_ips"], pd.DataFrame([{"customer_id": cid, "ip_address": ip_addr}])], ignore_index=True)
+        dataset["customer_addresses"] = pd.concat([dataset["customer_addresses"], pd.DataFrame([{"customer_id": cid, "address_id": shared_address}])], ignore_index=True)
+        dataset["customer_payments"] = pd.concat([dataset["customer_payments"], pd.DataFrame([{"customer_id": cid, "payment_id": pay_id}])], ignore_index=True)
+
+        oid = f"ord_sim_{sim_batch_id}_{i}"
+        dataset["orders"] = pd.concat([dataset["orders"], pd.DataFrame([{"order_id": oid, "customer_id": cid, "amount": random.choice([499.0, 799.0, 1200.0]), "status": "completed", "timestamp": now_str, "device_id": dev_id, "ip_address": ip_addr}])], ignore_index=True)
+        dataset["offer_redemptions"] = pd.concat([dataset["offer_redemptions"], pd.DataFrame([{"redemption_id": f"red_sim_{sim_batch_id}_{i}", "customer_id": cid, "order_id": oid, "offer_id": "OFFER_WELCOME50", "discount_amount": selected_scenario["discount"], "timestamp": now_str}])], ignore_index=True)
+
+    # 2. Add Random Organic Shoppers (Clear Risk)
+    for j in range(1, legit_count + 1):
+        legit_cid = f"sim_legit_{sim_batch_id}_{j}"
+        created_customers.append({"customer_id": legit_cid, "type": "legitimate"})
+        legit_dev = f"dev_clean_{sim_batch_id}_{j}"
+        legit_ip = f"10.0.0.{random.randint(10, 250)}"
+        legit_addr = f"addr_clean_{sim_batch_id}_{j}"
+        legit_pay = f"pay_clean_{sim_batch_id}_{j}"
+
+        c_row = {"customer_id": legit_cid, "name": f"Shopper {j} ({sim_batch_id})", "email": f"shopper_{sim_batch_id}_{j}@gmail.com", "phone": "+1555981240", "created_at": now_str}
+        dataset["customers"] = pd.concat([dataset["customers"], pd.DataFrame([c_row])], ignore_index=True)
+        dataset["customer_devices"] = pd.concat([dataset["customer_devices"], pd.DataFrame([{"customer_id": legit_cid, "device_id": legit_dev}])], ignore_index=True)
+        dataset["customer_ips"] = pd.concat([dataset["customer_ips"], pd.DataFrame([{"customer_id": legit_cid, "ip_address": legit_ip}])], ignore_index=True)
+        dataset["customer_addresses"] = pd.concat([dataset["customer_addresses"], pd.DataFrame([{"customer_id": legit_cid, "address_id": legit_addr}])], ignore_index=True)
+        dataset["customer_payments"] = pd.concat([dataset["customer_payments"], pd.DataFrame([{"customer_id": legit_cid, "payment_id": legit_pay}])], ignore_index=True)
+
+        oid = f"ord_sim_legit_{sim_batch_id}_{j}"
+        dataset["orders"] = pd.concat([dataset["orders"], pd.DataFrame([{"order_id": oid, "customer_id": legit_cid, "amount": random.uniform(1500.0, 4800.0), "status": "completed", "timestamp": now_str, "device_id": legit_dev, "ip_address": legit_ip}])], ignore_index=True)
+
+    # Trigger fresh ML overview re-computation for tenant
+    _recompute_tenant_overview(tenant_id, initial_load=True)
+
+    if tenant_id not in _TENANT_ACTIVITY_LOGS:
+        _TENANT_ACTIVITY_LOGS[tenant_id] = []
+
+    # Generate realistic activity stream events for each customer created in the batch
+    first_event = None
+    for item in created_customers:
+        cid = item["customer_id"]
+        is_abuser = item["type"] == "abuser"
+
+        # 1. Customer Account Created Event
+        c_event = {
+            "id": str(uuid.uuid4()),
+            "timestamp": now_str,
+            "type": "CUSTOMER_CREATED",
+            "description": f"New account registered: customer '{cid}'",
+            "severity": "neutral",
+            "event_type": "customer_created",
+            "entityType": "customer",
+            "entityId": cid,
+            "message": f"Account created for {cid}",
+        }
+        _TENANT_ACTIVITY_LOGS[tenant_id].insert(0, c_event)
+        _broadcast_event_sync(c_event)
+        if not first_event:
+            first_event = c_event
+
+        # 2. Order & Offer Redemption Event
+        disc_str = f" (Redeemed OFFER_WELCOME50 - ₹{selected_scenario['discount']})" if is_abuser else ""
+        o_event = {
+            "id": str(uuid.uuid4()),
+            "timestamp": now_str,
+            "type": "HIGH_RISK_REDEEM" if is_abuser else "ORDER_COMPLETED",
+            "description": f"Order placed by '{cid}'{disc_str}",
+            "severity": "high" if is_abuser else "neutral",
+            "event_type": "order_redemption" if is_abuser else "order",
+            "entityType": "customer",
+            "entityId": cid,
+            "message": f"Order completed by {cid}{disc_str}",
+        }
+        _TENANT_ACTIVITY_LOGS[tenant_id].insert(0, o_event)
+        _broadcast_event_sync(o_event)
+
+    return JSONResponse({
+        "status": "success",
+        "batch_id": sim_batch_id,
+        "simulatedCount": len(created_customers),
+        "customers": created_customers,
+        "overview": _TENANT_OVERVIEW_CACHES.get(tenant_id, {}),
+    })
+
+
+
+
 @app.get("/v1/analytics/metrics")
 def get_analytics_metrics():
     """Return model performance metrics presenting canonical held-out split metrics as headline and LOGOO cross-validation as reference."""

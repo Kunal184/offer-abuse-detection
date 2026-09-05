@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+
 import { useAppStore } from '../store/appStore';
-import { loadOverview, loadGraph, loadClusters } from '../api/client';
+import { loadOverview, loadGraph, loadClusters, loadActivityFeed, simulateCustomers } from '../api/client';
 import MiniPieChart from '../components/shared/MiniPieChart';
 import './Overview.css';
 
@@ -11,6 +12,25 @@ export default function OverviewPage() {
   const clusters = useAppStore((s) => s.clusters);
   const loading = useAppStore((s) => s.loading);
   const error = useAppStore((s) => s.error);
+  const [simulating, setSimulating] = useState(false);
+
+  const handleSimulate = async () => {
+    setSimulating(true);
+    try {
+      const res = await simulateCustomers();
+      const store = useAppStore.getState();
+      store.setOverview(res.overview);
+      const [g, c, act] = await Promise.all([loadGraph(), loadClusters(), loadActivityFeed()]);
+      store.setGraph(g.nodes, g.links);
+      store.setClusters(c.clusters || []);
+      store.setActivityEvents(act);
+    } catch (err) {
+      alert(`Simulation error: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setSimulating(false);
+    }
+  };
+
 
   useEffect(() => {
     const { setOverview, setGraph, setClusters, setLoading, setError } = useAppStore.getState();
@@ -66,12 +86,36 @@ export default function OverviewPage() {
   return (
     <div className="overview-container">
       {/* Header */}
-      <div className="overview-header">
+      <div className="overview-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
           <h1 className="overview-title">SYSTEM OVERVIEW</h1>
           <p className="overview-subtitle">Real-time graph intelligence & offer abuse detection</p>
         </div>
+        <button
+          onClick={handleSimulate}
+          disabled={simulating}
+          className="btn"
+          style={{
+            background: 'rgba(217, 57, 31, 0.15)',
+            border: '1px solid #D9391F',
+            color: '#D9391F',
+            fontFamily: 'JetBrains Mono, monospace',
+            fontSize: '11px',
+            fontWeight: 700,
+            letterSpacing: '0.05em',
+            padding: '8px 16px',
+            borderRadius: '4px',
+            cursor: simulating ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            textTransform: 'uppercase',
+          }}
+        >
+          {simulating ? 'SIMULATING EVENT STREAM...' : '⚡ SIMULATE CUSTOMERS'}
+        </button>
       </div>
+
 
       {/* Hero System Verdict Banner */}
       <div className="overview-verdict-banner" onClick={() => navigate('/clusters')}>
