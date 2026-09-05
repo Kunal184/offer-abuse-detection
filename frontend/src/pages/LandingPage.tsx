@@ -361,35 +361,22 @@ export default function LandingPage() {
               </p>
             </div>
 
-            {/* BOTTOM RIGHT: THE RESULT (F1 Striped Banner Widget) */}
+            {/* BOTTOM RIGHT: THE RESULT */}
             <div
               className="grid-quadrant quad-bottom-right"
               ref={(el) => { animatedRefs.current[6] = el; }}
             >
               <div>
                 <div className="quadrant-tag">04 — THE RESULT</div>
-
-                {/* F1 Metric Striped Banner Widget */}
-                <div className="f1-widget-banner">
-                  <div className="f1-widget-stripes">
-                    <div className="f1-stripe f1-stripe-1"></div>
-                    <div className="f1-stripe f1-stripe-2"></div>
-                    <div className="f1-stripe f1-stripe-3"></div>
-                    <div className="f1-stripe f1-stripe-4"></div>
-                    <div className="f1-stripe f1-stripe-5"></div>
-                    <div className="f1-stripe f1-stripe-6"></div>
-                    <div className="f1-stripe f1-stripe-7"></div>
-                  </div>
-                  
-                  <div className="f1-widget-content">
-                    <div className="f1-widget-val">89.5%</div>
-                    <div className="f1-widget-label">F1 SCORE · 100% PRECISION</div>
-                  </div>
-                </div>
+                <div className="quadrant-giant-number">0</div>
+                <h3 className="quadrant-headline">FALSE POSITIVES</h3>
+                <p className="quadrant-subtext" style={{ fontWeight: 700, letterSpacing: '0.08em', marginTop: '0.5rem' }}>
+                  686 LEGITIMATE CUSTOMERS TESTED
+                </p>
               </div>
 
-              <p className="quadrant-subtext">
-                Frozen test-set performance.
+              <p className="quadrant-subtext" style={{ marginTop: '1.5rem' }}>
+                88.4% recall on unseen abuse rings (LOGOO cross-validation)
               </p>
             </div>
 
