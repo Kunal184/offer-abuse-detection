@@ -87,25 +87,29 @@ export default function AnalyticsPage() {
         <div className="kpi-quad">
           <div className="kpi-quad-label">01 — F1 SCORE</div>
           <div className="kpi-quad-val highlight-red">{loadingMetrics ? '—' : f1Val}</div>
-          <div className="kpi-quad-sub">Group-Aware Split F1</div>
+          <div className="kpi-quad-sub">LOGOO MEAN (±14.38% ACROSS 21 RINGS)</div>
+          <div className="kpi-quad-ref">Canonical Held-Out Split: 0.8955</div>
         </div>
 
         <div className="kpi-quad">
           <div className="kpi-quad-label">02 — PRECISION</div>
           <div className="kpi-quad-val" style={{ color: '#EF9F27' }}>{loadingMetrics ? '—' : precisionVal}</div>
-          <div className="kpi-quad-sub">TP / (TP + FP)</div>
+          <div className="kpi-quad-sub">LOGOO MEAN ACROSS 21 HELD-OUT RINGS</div>
+          <div className="kpi-quad-ref">Canonical Held-Out Split: 100.00% (0 / 30 FP)</div>
         </div>
 
         <div className="kpi-quad">
           <div className="kpi-quad-label">03 — RECALL</div>
           <div className="kpi-quad-val" style={{ color: '#1D9E75' }}>{loadingMetrics ? '—' : recallVal}</div>
-          <div className="kpi-quad-sub">TP / (TP + FN)</div>
+          <div className="kpi-quad-sub">LOGOO MEAN ACROSS 21 HELD-OUT RINGS</div>
+          <div className="kpi-quad-ref">Canonical Held-Out Split: 81.08% (30 / 37 DETECTED)</div>
         </div>
 
         <div className="kpi-quad">
           <div className="kpi-quad-label">04 — ROC-AUC</div>
           <div className="kpi-quad-val">{loadingMetrics ? '—' : rocAucVal}</div>
-          <div className="kpi-quad-sub">Area Under ROC Curve</div>
+          <div className="kpi-quad-sub">LOGOO MEAN ROC-AUC</div>
+          <div className="kpi-quad-ref">Canonical Held-Out Split: 0.9961 (PR-AUC: 0.9872)</div>
         </div>
       </div>
 

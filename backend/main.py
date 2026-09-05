@@ -147,36 +147,71 @@ app.add_middleware(
 )
 
 
-# ── State & Cache Helpers ───────────────────────────────────────────────────
+# ── Multi-Tenant State & Cache Helpers ────────────────────────────────────────
 
-_RUNTIME_DATASET: dict[str, pd.DataFrame] | None = None
-_SCORED_CUSTOMERS_CACHE: dict[str, float] = {}  # customer_id -> probability
-_ACTIVITY_LOG: list[dict[str, Any]] = []        # activity feed events, most-recent first
-_OVERVIEW_CACHE: dict[str, Any] = {}            # cached single-source overview metrics
+_TENANT_DATASETS: dict[str, dict[str, pd.DataFrame]] = {}
+_TENANT_SCORED_CUSTOMERS: dict[str, dict[str, float]] = {}
+_TENANT_ACTIVITY_LOGS: dict[str, list[dict[str, Any]]] = {}
+_TENANT_OVERVIEW_CACHES: dict[str, dict[str, Any]] = {}
 _EVENT_SUBSCRIBERS: set[asyncio.Queue] = set()
 
 
-def get_state() -> dict[str, pd.DataFrame]:
-    global _RUNTIME_DATASET, _ACTIVITY_LOG
-    if _RUNTIME_DATASET is None:
-        seed_database(DATA_DIR)
-        _RUNTIME_DATASET = load_dataset_from_db()
-        _ACTIVITY_LOG = fetch_activity_logs(100)
-        _run_full_recompute_and_emit_events(initial_load=True)
-    return _RUNTIME_DATASET
+def _is_default_merchant(api_key: str | None) -> bool:
+    if not api_key:
+        return True
+    clean = api_key.strip()
+    return clean == DEMO_API_KEY or clean.startswith("demo_api_key") or clean == "cad_998124a3b81f" or clean.lower() == "paybros" or clean.startswith("paybros_")
+
+
+def get_state(api_key: str | None = None) -> dict[str, pd.DataFrame]:
+    global _TENANT_DATASETS, _TENANT_ACTIVITY_LOGS
+
+    tenant_id = "default" if _is_default_merchant(api_key) else (api_key.strip() if api_key else "default")
+
+    if tenant_id not in _TENANT_DATASETS:
+        if tenant_id == "default":
+            seed_database(DATA_DIR)
+            _TENANT_DATASETS["default"] = load_dataset_from_db()
+            _TENANT_ACTIVITY_LOGS["default"] = fetch_activity_logs(100)
+            _recompute_tenant_overview("default", initial_load=True)
+        else:
+            # Clean workspace for new non-default merchant accounts
+            _TENANT_DATASETS[tenant_id] = {
+                "customers": pd.DataFrame(columns=["customer_id", "name", "email", "phone", "created_at"]),
+                "orders": pd.DataFrame(columns=["order_id", "customer_id", "amount", "status", "timestamp", "device_id", "ip_address"]),
+                "offer_redemptions": pd.DataFrame(columns=["redemption_id", "customer_id", "order_id", "offer_id", "discount_amount", "timestamp"]),
+                "customer_devices": pd.DataFrame(columns=["customer_id", "device_id"]),
+                "customer_addresses": pd.DataFrame(columns=["customer_id", "address_id"]),
+                "customer_payments": pd.DataFrame(columns=["customer_id", "payment_id"]),
+                "customer_ips": pd.DataFrame(columns=["customer_id", "ip_address"]),
+                "ground_truth": pd.DataFrame(columns=["customer_id", "is_abuser"]),
+            }
+            _TENANT_ACTIVITY_LOGS[tenant_id] = []
+            _TENANT_SCORED_CUSTOMERS[tenant_id] = {}
+            _TENANT_OVERVIEW_CACHES[tenant_id] = {
+                "customersAnalyzed": 0,
+                "customersFlagged": 0,
+                "abuseClusters": 0,
+                "totalExposure": 0.0,
+                "flaggedRatio": 0.0,
+                "riskDistribution": {"high": 0, "medium": 0, "clear": 0},
+                "asOf": datetime.now(timezone.utc).isoformat(),
+            }
+
+    return _TENANT_DATASETS[tenant_id]
 
 
 def reset_state() -> None:
     """Reset database state and re-seed from baseline raw dataset."""
-    global _RUNTIME_DATASET, _SCORED_CUSTOMERS_CACHE, _ACTIVITY_LOG, _OVERVIEW_CACHE
+    global _TENANT_DATASETS, _TENANT_SCORED_CUSTOMERS, _TENANT_ACTIVITY_LOGS, _TENANT_OVERVIEW_CACHES
     seed_database(DATA_DIR, force=True)
-    _RUNTIME_DATASET = load_dataset_from_db()
-    _SCORED_CUSTOMERS_CACHE.clear()
-    _ACTIVITY_LOG.clear()
-    _OVERVIEW_CACHE.clear()
+    _TENANT_DATASETS.clear()
+    _TENANT_SCORED_CUSTOMERS.clear()
+    _TENANT_ACTIVITY_LOGS.clear()
+    _TENANT_OVERVIEW_CACHES.clear()
     _compute_as_of.cache_clear()
     _EVENT_SUBSCRIBERS.clear()
-    _run_full_recompute_and_emit_events(initial_load=True)
+    get_state("default")
 
 
 @lru_cache(maxsize=1)
@@ -253,22 +288,40 @@ def _get_risk_category(prob: float) -> str:
     return "CLEAR"
 
 
-def _run_full_recompute_and_emit_events(
+def _recompute_tenant_overview(
+    tenant_id: str = "default",
     trigger_event: dict[str, Any] | None = None,
     initial_load: bool = False,
 ) -> tuple[dict[str, Any], bool]:
-    """Re-run feature engineering across full population, re-score all customers, diff scores, update Overview stats, and emit activity events."""
-    global _RUNTIME_DATASET, _SCORED_CUSTOMERS_CACHE, _ACTIVITY_LOG, _OVERVIEW_CACHE
+    """Re-run feature engineering across full population of a specific tenant, re-score all customers, diff scores, update Overview stats, and emit activity events."""
+    dataset = _TENANT_DATASETS.get(tenant_id, {})
+    if not dataset or dataset.get("customers", pd.DataFrame()).empty:
+        empty_stats = {
+            "customersAnalyzed": 0,
+            "customersFlagged": 0,
+            "abuseClusters": 0,
+            "totalExposure": 0.0,
+            "flaggedRatio": 0.0,
+            "riskDistribution": {"high": 0, "medium": 0, "clear": 0},
+            "asOf": datetime.now(timezone.utc).isoformat(),
+        }
+        _TENANT_OVERVIEW_CACHES[tenant_id] = empty_stats
+        return empty_stats, False
 
-    dataset = load_dataset_from_db()
-    _RUNTIME_DATASET = dataset
-    if dataset["customers"].empty:
-        return {}, False
-
-    # 1. Re-run feature engineering across full customer population
+    # 1. Re-run feature engineering across tenant customer population
     features = build_feature_matrix(data_frames=dataset)
     if features.empty:
-        return {}, False
+        empty_stats = {
+            "customersAnalyzed": 0,
+            "customersFlagged": 0,
+            "abuseClusters": 0,
+            "totalExposure": 0.0,
+            "flaggedRatio": 0.0,
+            "riskDistribution": {"high": 0, "medium": 0, "clear": 0},
+            "asOf": datetime.now(timezone.utc).isoformat(),
+        }
+        _TENANT_OVERVIEW_CACHES[tenant_id] = empty_stats
+        return empty_stats, False
 
     # 2. Re-score all customers through frozen XGBoost model
     model = _get_model()
@@ -284,10 +337,13 @@ def _run_full_recompute_and_emit_events(
     event_emitted = False
     now_iso = datetime.now(timezone.utc).isoformat()
 
+    scored_cache = _TENANT_SCORED_CUSTOMERS.setdefault(tenant_id, {})
+    activity_log = _TENANT_ACTIVITY_LOGS.setdefault(tenant_id, [])
+
     # 3. Diff scores against previous stored scores
     if not initial_load:
         for cid, new_prob in new_scores.items():
-            prev_prob = _SCORED_CUSTOMERS_CACHE.get(cid)
+            prev_prob = scored_cache.get(cid)
             if prev_prob is None:
                 # Newly ingested customer
                 new_risk = _get_risk_category(new_prob)
@@ -301,15 +357,16 @@ def _run_full_recompute_and_emit_events(
                         "severity": "high",
                         "customer_id": cid,
                     }
-                    _ACTIVITY_LOG.insert(0, act_item)
-                    insert_activity_log({
-                        "id": act_item["id"],
-                        "timestamp": act_item["timestamp"],
-                        "event_type": act_item["type"],
-                        "customer_id": act_item["customer_id"],
-                        "severity": act_item["severity"],
-                        "message": act_item["description"],
-                    })
+                    activity_log.insert(0, act_item)
+                    if tenant_id == "default":
+                        insert_activity_log({
+                            "id": act_item["id"],
+                            "timestamp": act_item["timestamp"],
+                            "event_type": act_item["type"],
+                            "customer_id": act_item["customer_id"],
+                            "severity": act_item["severity"],
+                            "message": act_item["description"],
+                        })
                     _broadcast_event_sync(act_item)
             else:
                 prev_risk = _get_risk_category(prev_prob)
@@ -325,15 +382,16 @@ def _run_full_recompute_and_emit_events(
                         "severity": sev,
                         "customer_id": cid,
                     }
-                    _ACTIVITY_LOG.insert(0, act_item)
-                    insert_activity_log({
-                        "id": act_item["id"],
-                        "timestamp": act_item["timestamp"],
-                        "event_type": act_item["type"],
-                        "customer_id": act_item["customer_id"],
-                        "severity": act_item["severity"],
-                        "message": act_item["description"],
-                    })
+                    activity_log.insert(0, act_item)
+                    if tenant_id == "default":
+                        insert_activity_log({
+                            "id": act_item["id"],
+                            "timestamp": act_item["timestamp"],
+                            "event_type": act_item["type"],
+                            "customer_id": act_item["customer_id"],
+                            "severity": act_item["severity"],
+                            "message": act_item["description"],
+                        })
                     _broadcast_event_sync(act_item)
 
     # If a specific webhook triggered this recompute, emit an activity log for it
@@ -359,23 +417,22 @@ def _run_full_recompute_and_emit_events(
             "severity": sev,
             "customer_id": cid,
         }
-        _ACTIVITY_LOG.insert(0, trigger_act)
-        insert_activity_log({
-            "id": trigger_act["id"],
-            "timestamp": trigger_act["timestamp"],
-            "event_type": trigger_act["type"],
-            "customer_id": trigger_act["customer_id"],
-            "severity": trigger_act["severity"],
-            "message": trigger_act["description"],
-        })
+        activity_log.insert(0, trigger_act)
+        if tenant_id == "default":
+            insert_activity_log({
+                "id": trigger_act["id"],
+                "timestamp": trigger_act["timestamp"],
+                "event_type": trigger_act["type"],
+                "customer_id": trigger_act["customer_id"],
+                "severity": trigger_act["severity"],
+                "message": trigger_act["description"],
+            })
         _broadcast_event_sync(trigger_act)
         event_emitted = True
 
-    # Cap activity log at 500 items
-    _ACTIVITY_LOG = _ACTIVITY_LOG[:500]
-    _SCORED_CUSTOMERS_CACHE = new_scores
+    _TENANT_ACTIVITY_LOGS[tenant_id] = activity_log[:500]
+    _TENANT_SCORED_CUSTOMERS[tenant_id] = new_scores
 
-    # 4. Single-source computation of Overview statistics from this recompute pass
     import numpy as np
     total_analyzed = len(probabilities)
     flagged_mask = probabilities >= 0.50
@@ -385,13 +442,12 @@ def _run_full_recompute_and_emit_events(
     clear_count = int((probabilities < 0.30).sum())
     total_exposure = float(features.loc[flagged_mask, "total_spend"].sum())
 
-    # Extract clusters from feature matrix (cluster_size >= 2 with at least 1 flagged user)
     cluster_sizes = features["cluster_size"].to_numpy()
     cluster_count = int(np.sum((cluster_sizes >= 2) & flagged_mask))
     if cluster_count == 0 and flagged_count > 0:
         cluster_count = max(1, flagged_count // 3)
 
-    _OVERVIEW_CACHE = {
+    _TENANT_OVERVIEW_CACHES[tenant_id] = {
         "customersAnalyzed": total_analyzed,
         "customersFlagged": flagged_count,
         "abuseClusters": cluster_count,
@@ -402,10 +458,10 @@ def _run_full_recompute_and_emit_events(
             "medium": medium_count,
             "clear": clear_count,
         },
-        "asOf": _compute_as_of(),
+        "asOf": datetime.now(timezone.utc).isoformat(),
     }
 
-    return _OVERVIEW_CACHE, event_emitted
+    return _TENANT_OVERVIEW_CACHES[tenant_id], event_emitted
 
 
 # ── Webhook Authentication ────────────────────────────────────────────────────
@@ -521,7 +577,9 @@ def webhook_ingest_event(
     ts = request.timestamp or datetime.now(timezone.utc).isoformat()
     payload = request.payload.model_dump() if isinstance(request.payload, WebhookPayload) else request.payload
 
-    state = get_state()
+    state = get_state(api_key_val)
+    tenant_id = "default" if _is_default_merchant(api_key_val) else (api_key_val.strip() if api_key_val else "default")
+    scored_cache = _TENANT_SCORED_CUSTOMERS.get(tenant_id, {})
 
     # Check for duplicate event
     is_dup = False
@@ -552,7 +610,7 @@ def webhook_ingest_event(
             is_dup = True
 
     if is_dup:
-        cur_score = _SCORED_CUSTOMERS_CACHE.get(cid, 0.0)
+        cur_score = scored_cache.get(cid, 0.0)
         cur_risk = _get_risk_category(cur_score)
         table_map = {
             "customer": "customers", "customer_created": "customers",
@@ -575,10 +633,10 @@ def webhook_ingest_event(
         )
 
     # Capture previous score before ingestion
-    prev_score = _SCORED_CUSTOMERS_CACHE.get(cid)
+    prev_score = scored_cache.get(cid)
     prev_risk = _get_risk_category(prev_score) if prev_score is not None else "UNKNOWN"
 
-    # 2. Append raw event to underlying data store (SQLite DB + in-memory DataFrames)
+    # 2. Append raw event to underlying data store (SQLite DB for default + in-memory DataFrames)
     if event_type == "customer_created":
         cust_dict = {
             "customer_id": cid,
@@ -587,14 +645,15 @@ def webhook_ingest_event(
             "phone": payload.get("phone") or "0000000000",
             "created_at": ts,
         }
-        insert_customer(cust_dict)
-        insert_entity_associations(
-            customer_id=cid,
-            device_id=payload.get("device_id"),
-            address_id=payload.get("address_id"),
-            payment_id=payload.get("payment_id"),
-            ip_address=payload.get("ip_address"),
-        )
+        if tenant_id == "default":
+            insert_customer(cust_dict)
+            insert_entity_associations(
+                customer_id=cid,
+                device_id=payload.get("device_id"),
+                address_id=payload.get("address_id"),
+                payment_id=payload.get("payment_id"),
+                ip_address=payload.get("ip_address"),
+            )
         new_cust = pd.DataFrame([{
             "customer_id": cid,
             "name": cust_dict["name"],
@@ -624,18 +683,19 @@ def webhook_ingest_event(
         oid = str(payload.get("order_id") or f"ord_{uuid.uuid4().hex[:8]}")
         amt = float(payload.get("amount", 500.0))
         st = str(payload.get("status", "completed"))
-        insert_order({
-            "order_id": oid,
-            "customer_id": cid,
-            "amount": amt,
-            "timestamp": ts,
-            "status": st,
-        })
-        insert_entity_associations(
-            customer_id=cid,
-            device_id=payload.get("device_id"),
-            ip_address=payload.get("ip_address"),
-        )
+        if tenant_id == "default":
+            insert_order({
+                "order_id": oid,
+                "customer_id": cid,
+                "amount": amt,
+                "timestamp": ts,
+                "status": st,
+            })
+            insert_entity_associations(
+                customer_id=cid,
+                device_id=payload.get("device_id"),
+                ip_address=payload.get("ip_address"),
+            )
         ord_df = pd.DataFrame([{
             "order_id": oid,
             "customer_id": cid,
@@ -657,14 +717,15 @@ def webhook_ingest_event(
         oid = str(payload.get("order_id") or f"ord_{uuid.uuid4().hex[:8]}")
         off = str(payload.get("offer_code") or payload.get("offer_id") or "PROMO100")
         disc = float(payload.get("discount_amount", 100.0))
-        insert_offer_redemption({
-            "redemption_id": rid,
-            "customer_id": cid,
-            "order_id": oid,
-            "offer_id": off,
-            "discount_amount": disc,
-            "timestamp": ts,
-        })
+        if tenant_id == "default":
+            insert_offer_redemption({
+                "redemption_id": rid,
+                "customer_id": cid,
+                "order_id": oid,
+                "offer_id": off,
+                "discount_amount": disc,
+                "timestamp": ts,
+            })
         red_df = pd.DataFrame([{
             "redemption_id": rid,
             "customer_id": cid,
@@ -683,7 +744,8 @@ def webhook_ingest_event(
             "phone": payload.get("phone") or "0000000000",
             "created_at": ts,
         }
-        insert_customer(cust_dict)
+        if tenant_id == "default":
+            insert_customer(cust_dict)
         new_cust = pd.DataFrame([{
             "customer_id": cid,
             "name": cust_dict["name"],
@@ -695,31 +757,35 @@ def webhook_ingest_event(
 
     elif event_type == "device":
         dev_id = str(payload.get("device_id") or f"dev_{uuid.uuid4().hex[:8]}")
-        insert_entity_associations(customer_id=cid, device_id=dev_id)
+        if tenant_id == "default":
+            insert_entity_associations(customer_id=cid, device_id=dev_id)
         dev_df = pd.DataFrame([{"customer_id": cid, "device_id": dev_id}])
         state["customer_devices"] = pd.concat([state["customer_devices"], dev_df], ignore_index=True).drop_duplicates()
 
     elif event_type == "address":
         addr_id = str(payload.get("address_id") or f"addr_{uuid.uuid4().hex[:8]}")
-        insert_entity_associations(customer_id=cid, address_id=addr_id)
+        if tenant_id == "default":
+            insert_entity_associations(customer_id=cid, address_id=addr_id)
         addr_df = pd.DataFrame([{"customer_id": cid, "address_id": addr_id}])
         state["customer_addresses"] = pd.concat([state["customer_addresses"], addr_df], ignore_index=True).drop_duplicates()
 
     elif event_type == "payment":
         pay_id = str(payload.get("payment_id") or f"pay_{uuid.uuid4().hex[:8]}")
-        insert_entity_associations(customer_id=cid, payment_id=pay_id)
+        if tenant_id == "default":
+            insert_entity_associations(customer_id=cid, payment_id=pay_id)
         pay_df = pd.DataFrame([{"customer_id": cid, "payment_id": pay_id}])
         state["customer_payments"] = pd.concat([state["customer_payments"], pay_df], ignore_index=True).drop_duplicates()
 
     elif event_type == "ip":
         ip_addr = str(payload.get("ip_address") or f"192.168.1.{uuid.uuid4().hex[:2]}")
-        insert_entity_associations(customer_id=cid, ip_address=ip_addr)
+        if tenant_id == "default":
+            insert_entity_associations(customer_id=cid, ip_address=ip_addr)
         ip_df = pd.DataFrame([{"customer_id": cid, "ip_address": ip_addr}])
         state["customer_ips"] = pd.concat([state["customer_ips"], ip_df], ignore_index=True).drop_duplicates()
 
     _compute_as_of.cache_clear()
 
-    # 3. Re-run feature engineering & batch re-score across full customer population
+    # 3. Re-run feature engineering & batch re-score across tenant customer population
     trigger_info = {
         "event_type": event_type,
         "customer_id": cid,
@@ -731,9 +797,10 @@ def webhook_ingest_event(
         "payment_id": payload.get("payment_id"),
         "ip_address": payload.get("ip_address"),
     }
-    _, event_emitted = _run_full_recompute_and_emit_events(trigger_event=trigger_info)
+    _, event_emitted = _recompute_tenant_overview(tenant_id=tenant_id, trigger_event=trigger_info)
 
-    new_score = _SCORED_CUSTOMERS_CACHE.get(cid, 0.0)
+    tenant_scores = _TENANT_SCORED_CUSTOMERS.get(tenant_id, {})
+    new_score = tenant_scores.get(cid, 0.0)
     new_risk = _get_risk_category(new_score)
 
     table_map = {
@@ -742,12 +809,11 @@ def webhook_ingest_event(
         "redemption": "redemptions", "offer_redemption": "redemptions",
         "device": "devices", "address": "addresses", "payment": "payments", "ip": "ips",
     }
-    tbl_name = table_map.get(event_type, "events")
 
     pred_res = None
     if cid in set(state["customers"]["customer_id"]):
         try:
-            curr_state = get_state()
+            curr_state = get_state(api_key_val)
             max_as_of = max(pd.Timestamp(ts), pd.Timestamp(_compute_as_of()))
             pred_res = score_customer(
                 customer_id=cid,
@@ -887,28 +953,48 @@ def get_ground_truth():
 # ── Overview Stats ──────────────────────────────────────────────────────────
 
 @app.get("/v1/overview")
-def get_overview():
+def get_overview(raw_req: Request):
     """Return overview statistics computed from single-source recompute pass."""
-    if not _OVERVIEW_CACHE:
-        _run_full_recompute_and_emit_events(initial_load=True)
-    return JSONResponse(_OVERVIEW_CACHE)
+    api_key_val = raw_req.headers.get("X-API-Key") or raw_req.headers.get("x-api-key")
+    tenant_id = "default" if _is_default_merchant(api_key_val) else (api_key_val.strip() if api_key_val else "default")
+    get_state(api_key_val)
+    if tenant_id not in _TENANT_OVERVIEW_CACHES:
+        _recompute_tenant_overview(tenant_id, initial_load=True)
+    return JSONResponse(_TENANT_OVERVIEW_CACHES[tenant_id])
+
+
+@app.get("/v1/activity")
+def get_activity_feed(raw_req: Request):
+    """Return live activity events for active merchant tenant."""
+    api_key_val = raw_req.headers.get("X-API-Key") or raw_req.headers.get("x-api-key")
+    tenant_id = "default" if _is_default_merchant(api_key_val) else (api_key_val.strip() if api_key_val else "default")
+    get_state(api_key_val)
+    logs = _TENANT_ACTIVITY_LOGS.get(tenant_id, [])
+    return JSONResponse(logs)
 
 
 # ── Scored Customers (pre-computed, bulk) ──────────────────────────────────
 
 @app.get("/v1/data/scored-customers")
-def get_scored_customers():
+def get_scored_customers(raw_req: Request):
     """Return all customers joined with their freshly recomputed ML abuse scores."""
-    dataset = _load_all_data()
+    api_key_val = raw_req.headers.get("X-API-Key") or raw_req.headers.get("x-api-key")
+    tenant_id = "default" if _is_default_merchant(api_key_val) else (api_key_val.strip() if api_key_val else "default")
+    dataset = get_state(api_key_val)
     customers_df = dataset["customers"]
     if customers_df.empty:
         return JSONResponse([])
 
-    if not _SCORED_CUSTOMERS_CACHE:
-        _run_full_recompute_and_emit_events(initial_load=True)
+    scored_cache = _TENANT_SCORED_CUSTOMERS.get(tenant_id, {})
+    if not scored_cache:
+        _recompute_tenant_overview(tenant_id, initial_load=True)
+        scored_cache = _TENANT_SCORED_CUSTOMERS.get(tenant_id, {})
 
     features = build_feature_matrix(data_frames=dataset)
-    features["abuse_probability"] = features["customer_id"].map(lambda cid: _SCORED_CUSTOMERS_CACHE.get(cid, 0.0))
+    if features.empty:
+        return JSONResponse([])
+
+    features["abuse_probability"] = features["customer_id"].map(lambda cid: scored_cache.get(cid, 0.0))
     features["predicted_label"] = (features["abuse_probability"] >= 0.50).astype(int)
 
     merged = customers_df.merge(
@@ -929,22 +1015,23 @@ def get_scored_customers():
 # ── Graph / Cluster Endpoints ────────────────────────────────────────────────
 
 @app.get("/v1/graph")
-def get_graph():
+def get_graph(raw_req: Request):
     """Construct multi-relational graph from runtime dataset."""
     import networkx as nx
 
-    dataset = _load_all_data()
+    api_key_val = raw_req.headers.get("X-API-Key") or raw_req.headers.get("x-api-key")
+    tenant_id = "default" if _is_default_merchant(api_key_val) else (api_key_val.strip() if api_key_val else "default")
+    dataset = get_state(api_key_val)
     cust_df = dataset["customers"]
     if cust_df.empty:
         return JSONResponse({"nodes": [], "links": []})
 
-    if not _SCORED_CUSTOMERS_CACHE:
-        _run_full_recompute_and_emit_events(initial_load=True)
+    scored_cache = _TENANT_SCORED_CUSTOMERS.get(tenant_id, {})
 
     G = nx.Graph()
     for _, row in cust_df.iterrows():
         cid = str(row["customer_id"])
-        prob = _SCORED_CUSTOMERS_CACHE.get(cid, 0.0)
+        prob = scored_cache.get(cid, 0.0)
         G.add_node(
             cid,
             type="customer",
@@ -988,22 +1075,23 @@ def get_graph():
 
 
 @app.get("/v1/clusters")
-def get_clusters():
+def get_clusters(raw_req: Request):
     """Extract connected components containing flagged accounts."""
     import networkx as nx
 
-    dataset = _load_all_data()
+    api_key_val = raw_req.headers.get("X-API-Key") or raw_req.headers.get("x-api-key")
+    tenant_id = "default" if _is_default_merchant(api_key_val) else (api_key_val.strip() if api_key_val else "default")
+    dataset = get_state(api_key_val)
     cust_df = dataset["customers"]
     if cust_df.empty:
         return JSONResponse({"clusters": []})
 
-    if not _SCORED_CUSTOMERS_CACHE:
-        _run_full_recompute_and_emit_events(initial_load=True)
+    scored_cache = _TENANT_SCORED_CUSTOMERS.get(tenant_id, {})
 
     G = nx.Graph()
     for _, row in cust_df.iterrows():
         cid = str(row["customer_id"])
-        prob = _SCORED_CUSTOMERS_CACHE.get(cid, 0.0)
+        prob = scored_cache.get(cid, 0.0)
         G.add_node(
             cid,
             type="customer",
@@ -1077,44 +1165,57 @@ def get_clusters():
 
 @app.get("/v1/analytics/metrics")
 def get_analytics_metrics():
-    """Return model performance metrics computed on held-out group-aware evaluation baseline."""
+    """Return model performance metrics comparing LOGOO 21-fold cross-validation means with canonical held-out split."""
     return JSONResponse({
         "modelName": "XGBoost Group-Aware Classifier",
-        "auc": 0.9961,
-        "rocAuc": 0.9961,
-        "prAuc": 0.9872,
-        "f1": 0.8955,
-        "precision": 1.0000,
-        "recall": 0.8108,
-        "confusionMatrix": [[133, 0], [7, 30]],
-        "confusionMatrixDict": {
+        "logoo": {
+            "f1": 0.8424,
+            "f1Std": 0.1438,
+            "precision": 0.8069,
+            "recall": 0.8951,
+            "rocAuc": 0.9969,
+            "prAuc": 0.9272,
+        },
+        "canonicalHeldOut": {
+            "f1": 0.8955,
+            "precision": 1.0000,
+            "recall": 0.8108,
+            "rocAuc": 0.9961,
+            "prAuc": 0.9872,
             "truePositives": 30,
             "falsePositives": 0,
             "trueNegatives": 133,
             "falseNegatives": 7,
         },
+        "f1": 0.8424,
+        "precision": 0.8069,
+        "recall": 0.8951,
+        "rocAuc": 0.9969,
+        "prAuc": 0.9272,
+        "auc": 0.9969,
+        "confusionMatrix": [[133, 0], [7, 30]],
     })
 
 
 @app.get("/v1/analytics/feature-importance")
 def get_feature_importance():
-    """Return SHAP feature importance rankings."""
+    """Return exact mean absolute Tree SHAP feature importance rankings (log-odds impact across population)."""
     rankings = [
-        {"feature": "time_to_first_order_hours", "importance": 0.5566, "category": "Temporal"},
-        {"feature": "order_redemption_rate", "importance": 0.1130, "category": "Behavioral"},
-        {"feature": "order_count", "importance": 0.0894, "category": "Behavioral"},
-        {"feature": "max_device_user_count", "importance": 0.0670, "category": "Graph Network"},
-        {"feature": "cluster_size", "importance": 0.0302, "category": "Graph Network"},
-        {"feature": "account_age_days", "importance": 0.0268, "category": "Behavioral"},
-        {"feature": "cluster_redemptions_1h", "importance": 0.0219, "category": "Temporal Velocity"},
-        {"feature": "max_ip_user_count", "importance": 0.0197, "category": "Graph Network"},
-        {"feature": "min_account_creation_delta_minutes", "importance": 0.0171, "category": "Temporal Velocity"},
-        {"feature": "redemption_count", "importance": 0.0138, "category": "Behavioral"},
-        {"feature": "total_spend", "importance": 0.0102, "category": "Behavioral"},
-        {"feature": "time_to_first_redemption_hours", "importance": 0.0093, "category": "Temporal"},
-        {"feature": "unique_connected_customers", "importance": 0.0092, "category": "Graph Network"},
-        {"feature": "spend_to_discount_ratio", "importance": 0.0090, "category": "Behavioral"},
-        {"feature": "shared_entity_ratio", "importance": 0.0069, "category": "Graph Network"},
+        {"feature": "order_redemption_rate", "importance": 0.2172, "shap_val": 2.7242, "category": "Behavioral"},
+        {"feature": "order_count", "importance": 0.2088, "shap_val": 2.6186, "category": "Behavioral"},
+        {"feature": "time_to_first_order_hours", "importance": 0.1835, "shap_val": 2.3010, "category": "Temporal"},
+        {"feature": "spend_to_discount_ratio", "importance": 0.1078, "shap_val": 1.3516, "category": "Behavioral"},
+        {"feature": "total_spend", "importance": 0.0915, "shap_val": 1.1471, "category": "Behavioral"},
+        {"feature": "max_device_user_count", "importance": 0.0550, "shap_val": 0.6900, "category": "Graph Network"},
+        {"feature": "account_age_days", "importance": 0.0521, "shap_val": 0.6535, "category": "Behavioral"},
+        {"feature": "cluster_size", "importance": 0.0295, "shap_val": 0.3702, "category": "Graph Network"},
+        {"feature": "unique_connected_customers", "importance": 0.0238, "shap_val": 0.2981, "category": "Graph Network"},
+        {"feature": "redemption_count", "importance": 0.0132, "shap_val": 0.1650, "category": "Behavioral"},
+        {"feature": "min_account_creation_delta_minutes", "importance": 0.0108, "shap_val": 0.1359, "category": "Temporal Velocity"},
+        {"feature": "max_ip_user_count", "importance": 0.0035, "shap_val": 0.0442, "category": "Graph Network"},
+        {"feature": "time_to_first_redemption_hours", "importance": 0.0018, "shap_val": 0.0229, "category": "Temporal"},
+        {"feature": "cluster_redemptions_1h", "importance": 0.0008, "shap_val": 0.0098, "category": "Temporal Velocity"},
+        {"feature": "shared_entity_ratio", "importance": 0.0006, "shap_val": 0.0077, "category": "Graph Network"},
     ]
     return JSONResponse(rankings)
 
@@ -1128,4 +1229,4 @@ def post_reset():
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "model": "xgboost_groupaware", "timestamp": datetime.now(timezone.utc).isoformat()}
+    return {"status": "ok", "model": "xgboost_groupaware"}
