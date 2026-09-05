@@ -323,7 +323,26 @@
   position: relative;
   opacity: 0;
   transform: translateY(24px);
-  transition: opacity 0.6s ease, transform 0.6s ease;
+  background-color: transparent;
+  transition: opacity 0.6s ease, transform 0.6s ease, background-color 0.35s ease, color 0.35s ease, border-color 0.35s ease, box-shadow 0.35s ease;
+}
+
+.grid-quadrant:hover {
+  background-color: #0D0D0E !important; /* Sleek matte black */
+  box-shadow: inset 0 0 0 1px rgba(229, 52, 28, 0.4), 0 16px 36px rgba(0, 0, 0, 0.4);
+  z-index: 2;
+}
+
+.grid-quadrant:hover .quadrant-tag,
+.grid-quadrant:hover .quadrant-giant-number,
+.grid-quadrant:hover .quadrant-headline {
+  color: #F4F3EE;
+  transition: color 0.35s ease;
+}
+
+.grid-quadrant:hover .quadrant-subtext {
+  color: #D3CFCE;
+  transition: color 0.35s ease;
 }
 
 .grid-quadrant.is-visible {
