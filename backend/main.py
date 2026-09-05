@@ -1165,9 +1165,20 @@ def get_clusters(raw_req: Request):
 
 @app.get("/v1/analytics/metrics")
 def get_analytics_metrics():
-    """Return model performance metrics comparing LOGOO 21-fold cross-validation means with canonical held-out split."""
+    """Return model performance metrics presenting canonical held-out split metrics as headline and LOGOO cross-validation as reference."""
     return JSONResponse({
         "modelName": "XGBoost Group-Aware Classifier",
+        "canonicalHeldOut": {
+            "f1": 0.8955,
+            "precision": 1.0000,
+            "recall": 0.8108,
+            "rocAuc": 0.9961,
+            "prAuc": 0.9872,
+            "truePositives": 30,
+            "falsePositives": 0,
+            "trueNegatives": 133,
+            "falseNegatives": 7,
+        },
         "logoo": {
             "f1": 0.8424,
             "f1Std": 0.1438,

@@ -87,29 +87,29 @@ export default function AnalyticsPage() {
         <div className="kpi-quad">
           <div className="kpi-quad-label">01 — F1 SCORE</div>
           <div className="kpi-quad-val highlight-red">{loadingMetrics ? '—' : f1Val}</div>
-          <div className="kpi-quad-sub">LOGOO MEAN (±14.38% ACROSS 21 RINGS)</div>
-          <div className="kpi-quad-ref">Canonical Held-Out Split: 0.8955</div>
+          <div className="kpi-quad-sub">CANONICAL HELD-OUT TEST SPLIT</div>
+          <div className="kpi-quad-ref">LOGOO CV Mean: 0.8424 (±0.1438 across 21 rings)</div>
         </div>
 
         <div className="kpi-quad">
           <div className="kpi-quad-label">02 — PRECISION</div>
-          <div className="kpi-quad-val" style={{ color: '#EF9F27' }}>{loadingMetrics ? '—' : precisionVal}</div>
-          <div className="kpi-quad-sub">LOGOO MEAN ACROSS 21 HELD-OUT RINGS</div>
-          <div className="kpi-quad-ref">Canonical Held-Out Split: 100.00% (0 / 30 FP)</div>
+          <div className="kpi-quad-val" style={{ color: '#1D9E75' }}>{loadingMetrics ? '—' : (metrics?.precision != null ? (metrics.precision === 1 ? '100.00%' : `${(metrics.precision * 100).toFixed(2)}%`) : '—')}</div>
+          <div className="kpi-quad-sub">CANONICAL HELD-OUT SPLIT (0 / 30 FP)</div>
+          <div className="kpi-quad-ref">LOGOO 21-Ring CV Mean: 80.69%</div>
         </div>
 
         <div className="kpi-quad">
           <div className="kpi-quad-label">03 — RECALL</div>
-          <div className="kpi-quad-val" style={{ color: '#1D9E75' }}>{loadingMetrics ? '—' : recallVal}</div>
-          <div className="kpi-quad-sub">LOGOO MEAN ACROSS 21 HELD-OUT RINGS</div>
-          <div className="kpi-quad-ref">Canonical Held-Out Split: 81.08% (30 / 37 DETECTED)</div>
+          <div className="kpi-quad-val" style={{ color: '#EF9F27' }}>{loadingMetrics ? '—' : (metrics?.recall != null ? `${(metrics.recall * 100).toFixed(2)}%` : '—')}</div>
+          <div className="kpi-quad-sub">CANONICAL HELD-OUT SPLIT (30 / 37 DETECTED)</div>
+          <div className="kpi-quad-ref">LOGOO 21-Ring CV Mean: 89.51%</div>
         </div>
 
         <div className="kpi-quad">
           <div className="kpi-quad-label">04 — ROC-AUC</div>
           <div className="kpi-quad-val">{loadingMetrics ? '—' : rocAucVal}</div>
-          <div className="kpi-quad-sub">LOGOO MEAN ROC-AUC</div>
-          <div className="kpi-quad-ref">Canonical Held-Out Split: 0.9961 (PR-AUC: 0.9872)</div>
+          <div className="kpi-quad-sub">CANONICAL HELD-OUT TEST SPLIT</div>
+          <div className="kpi-quad-ref">LOGOO 21-Ring CV Mean: 0.9969</div>
         </div>
       </div>
 
