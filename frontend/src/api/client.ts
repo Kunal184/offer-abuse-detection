@@ -18,8 +18,23 @@ import type {
 
 const BASE = import.meta.env.VITE_API_BASE || '';
 
+function getAuthHeader(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem('hex_currentUser');
+    if (raw) {
+      const user = JSON.parse(raw);
+      if (user?.apiKey) {
+        return { 'X-API-Key': user.apiKey };
+      }
+    }
+  } catch {}
+  return {};
+}
+
 async function apiGet<T>(path: string): Promise<T> {
-  const res = await fetch(`${BASE}${path}`);
+  const res = await fetch(`${BASE}${path}`, {
+    headers: getAuthHeader(),
+  });
   if (!res.ok) throw new Error(`API ${path}: ${res.status}`);
   return res.json();
 }
@@ -27,7 +42,10 @@ async function apiGet<T>(path: string): Promise<T> {
 async function apiPost<T, B = unknown>(path: string, body: B): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeader(),
+    },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`API ${path}: ${res.status}`);
