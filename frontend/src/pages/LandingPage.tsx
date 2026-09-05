@@ -6,11 +6,14 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const animatedRefs = useRef<(HTMLElement | HTMLDivElement | null)[]>([]);
 
-  // Login dropdown state
+  // Login / Signup dropdown state
   const [showLogin, setShowLogin] = useState(false);
+  const [authTab, setAuthTab] = useState<'signin' | 'signup'>('signin');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [loginError, setLoginError] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [createdApiKey, setCreatedApiKey] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,7 +40,8 @@ export default function LandingPage() {
     function handleClickOutside(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setShowLogin(false);
-        setLoginError('');
+        setAuthError('');
+        setCreatedApiKey(null);
       }
     }
     if (showLogin) {
@@ -46,13 +50,73 @@ export default function LandingPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showLogin]);
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  // Helper to load accounts from localStorage
+  const getStoredUsers = () => {
+    try {
+      const stored = localStorage.getItem('hex_users');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  };
+
+  const handleAuthSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (username === 'payBros' && password === '1234') {
-      setLoginError('');
-      navigate('/overview');
+    const cleanUser = username.trim();
+
+    if (!cleanUser || !password) {
+      setAuthError('Please enter username and password');
+      return;
+    }
+
+    if (authTab === 'signin') {
+      // Sign in logic
+      const users = getStoredUsers();
+      
+      // Default hardcoded check or registered user check
+      if ((cleanUser.toLowerCase() === 'paybros' && password === '1234') || (users[cleanUser.toLowerCase()] && users[cleanUser.toLowerCase()].password === password)) {
+        const apiKey = cleanUser.toLowerCase() === 'paybros' ? 'paybros_live_key_998124a' : users[cleanUser.toLowerCase()].apiKey;
+        localStorage.setItem('hex_currentUser', JSON.stringify({ username: cleanUser, apiKey }));
+        setAuthError('');
+        navigate('/overview');
+      } else {
+        setAuthError('Invalid username or password');
+      }
     } else {
-      setLoginError('Invalid username or password');
+      // Sign up logic
+      if (password !== confirmPassword) {
+        setAuthError('Passwords do not match');
+        return;
+      }
+      if (password.length < 3) {
+        setAuthError('Password must be at least 3 characters');
+        return;
+      }
+
+      const users = getStoredUsers();
+      if (cleanUser.toLowerCase() === 'paybros' || users[cleanUser.toLowerCase()]) {
+        setAuthError('Username already exists');
+        return;
+      }
+
+      // Generate API key
+      const randomHex = Array.from({ length: 12 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+      const generatedApiKey = `paybros_key_${randomHex}`;
+
+      // Save user
+      users[cleanUser.toLowerCase()] = {
+        username: cleanUser,
+        password,
+        apiKey: generatedApiKey,
+        createdAt: new Date().toISOString()
+      };
+      localStorage.setItem('hex_users', JSON.stringify(users));
+
+      // Save active session
+      localStorage.setItem('hex_currentUser', JSON.stringify({ username: cleanUser, apiKey: generatedApiKey }));
+
+      setCreatedApiKey(generatedApiKey);
+      setAuthError('');
     }
   };
 
@@ -70,62 +134,124 @@ export default function LandingPage() {
               className={`landing-action ${showLogin ? 'active' : ''}`}
               onClick={() => {
                 setShowLogin(!showLogin);
-                setLoginError('');
+                setAuthError('');
+                setCreatedApiKey(null);
               }}
             >
               ENTER DASHBOARD <span className="arrow">{showLogin ? '▲' : '→'}</span>
             </button>
 
-            {/* Animated Login Dropdown Box */}
+            {/* Animated Login Popover Box */}
             <div className={`login-dropdown-popover ${showLogin ? 'open' : ''}`}>
               <div className="login-dropdown-header">
                 <span className="login-dropdown-title">PAY BROS AUTHENTICATION</span>
               </div>
 
-              <form onSubmit={handleLoginSubmit} className="login-dropdown-form">
-                <div className="login-field-group">
-                  <label className="login-field-label">USERNAME</label>
-                  <input
-                    type="text"
-                    className="login-field-input"
-                    placeholder="payBros"
-                    value={username}
-                    onChange={(e) => {
-                      setUsername(e.target.value);
-                      setLoginError('');
-                    }}
-                    autoFocus={showLogin}
-                  />
-                </div>
-
-                <div className="login-field-group">
-                  <label className="login-field-label">PASSWORD</label>
-                  <input
-                    type="password"
-                    className="login-field-input"
-                    placeholder="••••"
-                    value={password}
-                    onChange={(e) => {
-                      setPassword(e.target.value);
-                      setLoginError('');
-                    }}
-                  />
-                </div>
-
-                {loginError && (
-                  <div className="login-error-msg">
-                    ✕ {loginError}
-                  </div>
-                )}
-
-                <button type="submit" className="login-submit-btn">
-                  SIGN IN TO CONSOLE <span className="arrow">→</span>
+              {/* Tab Switcher */}
+              <div className="login-tabs">
+                <button
+                  type="button"
+                  className={`login-tab-btn ${authTab === 'signin' ? 'active' : ''}`}
+                  onClick={() => {
+                    setAuthTab('signin');
+                    setAuthError('');
+                    setCreatedApiKey(null);
+                  }}
+                >
+                  SIGN IN
                 </button>
+                <button
+                  type="button"
+                  className={`login-tab-btn ${authTab === 'signup' ? 'active' : ''}`}
+                  onClick={() => {
+                    setAuthTab('signup');
+                    setAuthError('');
+                    setCreatedApiKey(null);
+                  }}
+                >
+                  SIGN UP
+                </button>
+              </div>
 
-                <div className="login-hint-box">
-                  <code>payBros</code> / <code>1234</code>
+              {createdApiKey ? (
+                <div className="login-success-box">
+                  <div className="success-badge">ACCOUNT CREATED ✓</div>
+                  <p className="success-sub">Your generated API key:</p>
+                  <code className="generated-key-display">{createdApiKey}</code>
+                  <button
+                    type="button"
+                    className="login-submit-btn"
+                    style={{ marginTop: '0.8rem' }}
+                    onClick={() => navigate('/overview')}
+                  >
+                    CONTINUE TO DASHBOARD <span className="arrow">→</span>
+                  </button>
                 </div>
-              </form>
+              ) : (
+                <form onSubmit={handleAuthSubmit} className="login-dropdown-form">
+                  <div className="login-field-group">
+                    <label className="login-field-label">USERNAME</label>
+                    <input
+                      type="text"
+                      className="login-field-input"
+                      placeholder={authTab === 'signin' ? "payBros" : "new_merchant"}
+                      value={username}
+                      onChange={(e) => {
+                        setUsername(e.target.value);
+                        setAuthError('');
+                      }}
+                      autoFocus={showLogin}
+                    />
+                  </div>
+
+                  <div className="login-field-group">
+                    <label className="login-field-label">PASSWORD</label>
+                    <input
+                      type="password"
+                      className="login-field-input"
+                      placeholder="••••"
+                      value={password}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        setAuthError('');
+                      }}
+                    />
+                  </div>
+
+                  {authTab === 'signup' && (
+                    <div className="login-field-group">
+                      <label className="login-field-label">CONFIRM PASSWORD</label>
+                      <input
+                        type="password"
+                        className="login-field-input"
+                        placeholder="••••"
+                        value={confirmPassword}
+                        onChange={(e) => {
+                          setConfirmPassword(e.target.value);
+                          setAuthError('');
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  {authError && (
+                    <div className="login-error-msg">
+                      ✕ {authError}
+                    </div>
+                  )}
+
+                  <button type="submit" className="login-submit-btn">
+                    {authTab === 'signin' ? 'SIGN IN TO CONSOLE' : 'CREATE ACCOUNT & GENERATE KEY'}{' '}
+                    <span className="arrow">→</span>
+                  </button>
+
+                  {authTab === 'signin' && (
+                    <div className="login-hint-box">
+                      Default demo: <code>payBros</code> / <code>1234</code>
+                    </div>
+                  )}
+                </form>
+              )}
             </div>
           </div>
         </header>

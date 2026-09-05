@@ -6,8 +6,12 @@ export default function SettingsPage() {
   const [copiedUrl, setCopiedUrl] = useState(false);
   const [activeTab, setActiveTab] = useState<'customer_created' | 'order' | 'redemption'>('customer_created');
 
+  // Read current user session if exists
+  const storedUserRaw = localStorage.getItem('hex_currentUser');
+  const currentUser = storedUserRaw ? JSON.parse(storedUserRaw) : { username: 'Pay Bros', apiKey: 'paybros_live_key_998124a' };
+
   const webhookUrl = 'http://localhost:8000/v1/events';
-  const apiKey = 'demo_api_key_acme_2026';
+  const apiKey = currentUser.apiKey || 'paybros_live_key_998124a';
 
   const handleCopyUrl = () => {
     navigator.clipboard.writeText(webhookUrl);
