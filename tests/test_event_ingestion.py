@@ -252,7 +252,6 @@ class EventIngestionTest(unittest.TestCase):
         # 1. Behavioral Features (order event at 2026-09-02T18:00:00Z)
         pred_before = self.client.post("/v1/predictions/batch", json={
             "customer_ids": [c1],
-            "as_of": "2027-03-01T00:00:00Z",
         }).json()["predictions"][0]["feature_snapshot"]
 
         order_count_before = pred_before["order_count"]
