@@ -30,13 +30,27 @@ The platform is structured into three clean, decoupled tiers:
 
 ## The Problem & Business Narrative
 
-E-commerce businesses spend billions on acquisition discounts, referral rewards, and sign-up promos. However, malicious actors exploit these offers through **Sybil Promo Hoarding**:
-- Creating dozens of fake accounts using throwaway emails.
-- Re-using physical hardware devices, residential proxy IPs, or shared credit cards to claim \$50+ sign-up coupons repeatedly.
-- Single-handedly draining marketing budgets while distorting customer metrics.
+E-commerce merchants and digital platforms spend billions of dollars annually on customer acquisition incentives, first-order discounts, and double-sided referral programs. However, sophisticated fraud syndicates systematically exploit these promotional budgets across multiple vectors:
+
+1. **Referral Farms (Self-Referral Rings)**:
+   - Fraudsters create automated networks of "phantom" referred accounts linked back to a single primary "referrer" account. By triggering synthetic micro-purchases or redeeming free-tier trial coupons, they harvest \$20–\$50 referral credits per fake signup, draining marketing budgets into cashable rewards.
+
+2. **Sybil Promo Hoarding & Single-Use Coupon Abuse**:
+   - Single users cycle through disposable email generators, burner phone numbers, and proxy IPs to repeatedly claim single-use "New Customer" welcome discounts (\$50+ off \$100). They obtain high-value physical goods at near-zero cost.
+
+3. **Voucher Reselling & Secondary Market Arbitrage**:
+   - Organised rings use automated scripts to claim bulk promotional vouchers across hundreds of synthetic accounts, then resell the active promo codes on third-party secondary markets for pure profit.
+
+4. **Synthetic Account Creation & Bot Storms**:
+   - Automated scripts spin up 50+ accounts in under 60 seconds from shared device pools, artificially inflating merchant user acquisition metrics while delivering zero long-term Customer Lifetime Value (LTV).
+
+### How This Platform Saves Merchants Money:
+- **Direct Budget Protection**: Stops promo discount leakage instantly at checkout without adding friction to legitimate buyers (**0 False Positives**).
+- **Preserved LTV & CAC Metrics**: Prevents marketing analytics from being skewed by phantom accounts, ensuring true acquisition costs (CAC) reflect real human shoppers.
+- **Automated Operations**: Replaces manual fraud review queues with real-time SHAP feature attributions and visual D3 graph cluster analysis.
 
 ### Why Standard ML Fails:
-Standard fraud classifiers analyze customers in isolation. They fail to detect promo hoarders who randomize names and emails. Furthermore, standard **K-Fold Cross Validation leaks group identities** between training and test sets, yielding artificially inflated accuracy scores that collapse in production when facing new fraud syndicates.
+Standard fraud classifiers evaluate customer accounts in isolation. They fail to detect promo hoarders who randomize names and emails. Furthermore, standard **K-Fold Cross Validation leaks group identities** between training and test sets, yielding artificially inflated accuracy scores that collapse in production when facing new fraud syndicates.
 
 ### Our Solution:
 Our engine combines **Multi-Graph Entity Resolution** with a **Group-Aware XGBoost Classifier**. By evaluating entire connected clusters and validating performance using **Leave-One-Group-Out Cross Validation (LOGOO CV)**, our model generalizes cleanly to previously unseen fraud syndicates with **0 False Positives**.
