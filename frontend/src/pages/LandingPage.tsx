@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAppStore } from '../store/appStore';
 import './LandingPage.css';
 
 export default function LandingPage() {
@@ -77,6 +78,7 @@ export default function LandingPage() {
       if ((cleanUser.toLowerCase() === 'paybros' && password === '1234') || (users[cleanUser.toLowerCase()] && users[cleanUser.toLowerCase()].password === password)) {
         const apiKey = cleanUser.toLowerCase() === 'paybros' ? 'cad_998124a3b81f' : users[cleanUser.toLowerCase()].apiKey;
         localStorage.setItem('hex_currentUser', JSON.stringify({ username: cleanUser, apiKey }));
+        useAppStore.setState({ overview: null, customers: [], clusters: [], graphNodes: [], graphLinks: [], activityEvents: [] });
         setAuthError('');
         navigate('/overview');
       } else {
@@ -600,6 +602,165 @@ export default function LandingPage() {
               </p>
             </div>
 
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 4: SYSTEM ARCHITECTURE BLUEPRINT */}
+      <section className="arch-blueprint-section scroll-reveal" ref={(el) => { animatedRefs.current[7] = el; }}>
+        <div className="arch-blueprint-container">
+          <div className="arch-section-tag">05 — SYSTEM ARCHITECTURE</div>
+          <h2 className="arch-section-headline">FULL-STACK SYSTEM ARCHITECTURE</h2>
+
+          <div className="arch-blueprint-canvas">
+            {/* TIER 1 */}
+            <div className="arch-tier-box">
+              <div className="arch-tier-header">
+                TIER 1 · FRONTEND SPA (REACT + VITE + D3.JS)
+              </div>
+              <div className="arch-tier-grid tier-1-grid">
+                <div className="arch-card">
+                  <div className="arch-card-number">01</div>
+                  <div className="arch-card-title">OVERVIEW DASHBOARD</div>
+                  <ul className="arch-card-list">
+                    <li>Real-Time KPI Cards</li>
+                    <li>Risk Distribution Pie</li>
+                  </ul>
+                </div>
+                <div className="arch-card">
+                  <div className="arch-card-number">02</div>
+                  <div className="arch-card-title">CUSTOMER CONSOLE</div>
+                  <ul className="arch-card-list">
+                    <li>ML Abuse Probabilities</li>
+                    <li>Risk Level Badge Filters</li>
+                  </ul>
+                </div>
+                <div className="arch-card">
+                  <div className="arch-card-number">03</div>
+                  <div className="arch-card-title">ABUSE CLUSTERS (D3.JS)</div>
+                  <ul className="arch-card-list">
+                    <li>Interactive Multi-Graph</li>
+                    <li>Force Layout &amp; Ring Zoom</li>
+                  </ul>
+                </div>
+                <div className="arch-card">
+                  <div className="arch-card-number">04</div>
+                  <div className="arch-card-title">INTEGRATION SPEC</div>
+                  <ul className="arch-card-list">
+                    <li>Live Webhook Payload Doc</li>
+                    <li>Generated X-API-Key</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* CONNECTING ARROW 1 */}
+            <div className="arch-connector">
+              <div className="arch-connector-line"></div>
+              <div className="arch-connector-badge">HTTP REST / SSE STREAMING</div>
+              <div className="arch-connector-line"></div>
+              <div className="arch-connector-arrow">↓</div>
+            </div>
+
+            {/* TIER 2 */}
+            <div className="arch-tier-box">
+              <div className="arch-tier-header">
+                TIER 2 · FASTAPI BACKEND &amp; MULTI-TENANT ORCHESTRATION LAYER
+              </div>
+              
+              <div className="arch-banner-bar">
+                API GATEWAY &amp; TENANT ISOLATION · X-API-KEY HEADER AUTHENTICATION · ISOLATED MEMORY WORKSPACES (_TENANT_DATASETS)
+              </div>
+
+              <div className="arch-tier-grid tier-2-grid">
+                <div className="arch-card">
+                  <div className="arch-card-number">01</div>
+                  <div className="arch-card-title">INGESTION &amp; IDEMPOTENCY</div>
+                  <div className="arch-card-subhead">POST /v1/events</div>
+                  <ul className="arch-card-list">
+                    <li>customer_created · order · redemption</li>
+                    <li>Entity links (device, ip, payment, address)</li>
+                  </ul>
+                </div>
+                <div className="arch-card">
+                  <div className="arch-card-number">02</div>
+                  <div className="arch-card-title">GRAPH RESOLUTION ENGINE</div>
+                  <div className="arch-card-subhead">NETWORKX MULTI-GRAPH</div>
+                  <ul className="arch-card-list">
+                    <li>4 Edge Types: Hardware, Payment, IP, Addr</li>
+                    <li>Connected Component Abuse Rings</li>
+                  </ul>
+                </div>
+                <div className="arch-card">
+                  <div className="arch-card-number">03</div>
+                  <div className="arch-card-title">REAL-TIME EVENT BUS</div>
+                  <div className="arch-card-subhead">SSE STREAM &amp; SCORE DIFFING</div>
+                  <ul className="arch-card-list">
+                    <li>GET /v1/events/stream (Asyncio Queue)</li>
+                    <li>Live Risk Transitions (Clear → High)</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* CONNECTING ARROW 2 */}
+            <div className="arch-connector simple-arrow">
+              <div className="arch-connector-line"></div>
+              <div className="arch-connector-arrow">↓</div>
+            </div>
+
+            {/* TIER 3 */}
+            <div className="arch-tier-box">
+              <div className="arch-tier-header">
+                TIER 3 · DATA PERSISTENCE &amp; ML INFERENCE PIPELINE
+              </div>
+              <div className="arch-tier-grid tier-3-grid">
+                <div className="arch-card">
+                  <div className="arch-card-title">STORAGE &amp; PERSISTENCE</div>
+                  <div className="arch-card-subhead">SQLITE DB &amp; CSV STORE</div>
+                  <ul className="arch-card-list">
+                    <li>Entity mapping tables &amp; activity_logs</li>
+                    <li>Single-source overview stats cache</li>
+                  </ul>
+                </div>
+                <div className="arch-card">
+                  <div className="arch-card-title">VECTOR EXTRACTION</div>
+                  <div className="arch-card-subhead">21 NUMERICAL FEATURES</div>
+                  <ul className="arch-card-list">
+                    <li>Velocity, Spans, Discount Ratios</li>
+                    <li>Vectorized NumPy &amp; StandardScaler</li>
+                  </ul>
+                </div>
+                <div className="arch-card highlight-red-card">
+                  <div className="arch-card-title red-title">ML INFERENCE ENGINE</div>
+                  <div className="arch-card-subhead red-subhead">GROUP-AWARE XGBOOST</div>
+                  <ul className="arch-card-list">
+                    <li>LOGOO Evaluated (0 False Positives)</li>
+                    <li>88.4% Recall on Unseen Abuse Rings</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            {/* BOTTOM SPECS STRIP */}
+            <div className="arch-specs-strip">
+              <div className="arch-spec-col">
+                <div className="arch-spec-label">API LATENCY</div>
+                <div className="arch-spec-value">&lt; 50 MS END-TO-END</div>
+              </div>
+              <div className="arch-spec-col">
+                <div className="arch-spec-label">CROSS-VALIDATION</div>
+                <div className="arch-spec-value">LOGOO GROUP-AWARE</div>
+              </div>
+              <div className="arch-spec-col">
+                <div className="arch-spec-label">FALSE POSITIVE RATE</div>
+                <div className="arch-spec-value">0.00% (0 / 686 TESTED)</div>
+              </div>
+              <div className="arch-spec-col">
+                <div className="arch-spec-label">WORKSPACE ISOLATION</div>
+                <div className="arch-spec-value">X-API-KEY TENANT SILOS</div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

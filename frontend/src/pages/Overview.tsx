@@ -13,47 +13,40 @@ export default function OverviewPage() {
   const error = useAppStore((s) => s.error);
 
   useEffect(() => {
-    const store = useAppStore.getState();
-    const { setOverview, setGraph, setClusters, setLoading, setError } = store;
+    const { setOverview, setGraph, setClusters, setLoading, setError } = useAppStore.getState();
 
-    if (!store.overview && !store.loading.overview) {
-      setLoading('overview', true);
-      loadOverview()
-        .then(setOverview)
-        .catch((e: unknown) =>
-          setError('overview', e instanceof Error ? e.message : String(e))
-        )
-        .finally(() => setLoading('overview', false));
-    }
+    setLoading('overview', true);
+    loadOverview()
+      .then(setOverview)
+      .catch((e: unknown) =>
+        setError('overview', e instanceof Error ? e.message : String(e))
+      )
+      .finally(() => setLoading('overview', false));
 
-    if (store.graphNodes.length === 0 && !store.loading.graph) {
-      setLoading('graph', true);
-      loadGraph()
-        .then((g) => setGraph(g.nodes, g.links))
-        .catch((e: unknown) => {
-          setError('graph', e instanceof Error ? e.message : String(e));
-        })
-        .finally(() => setLoading('graph', false));
-    }
+    setLoading('graph', true);
+    loadGraph()
+      .then((g) => setGraph(g.nodes, g.links))
+      .catch((e: unknown) => {
+        setError('graph', e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => setLoading('graph', false));
 
-    if (store.clusters.length === 0 && !store.loading.clusters) {
-      setLoading('clusters', true);
-      loadClusters()
-        .then((d) => setClusters(d.clusters || []))
-        .catch((e: unknown) => {
-          setError('clusters', e instanceof Error ? e.message : String(e));
-        })
-        .finally(() => setLoading('clusters', false));
-    }
+    setLoading('clusters', true);
+    loadClusters()
+      .then((d) => setClusters(d.clusters || []))
+      .catch((e: unknown) => {
+        setError('clusters', e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => setLoading('clusters', false));
   }, []);
 
   const riskDist = overview?.riskDistribution;
   const pieData = riskDist
     ? [
-        { name: 'High Risk', value: riskDist.high, color: '#E5341C' },
-        { name: 'Medium Watch', value: riskDist.medium, color: '#EF9F27' },
-        { name: 'Clear', value: riskDist.clear, color: '#1D9E75' },
-      ]
+      { name: 'High Risk', value: riskDist.high, color: '#E5341C' },
+      { name: 'Medium Watch', value: riskDist.medium, color: '#EF9F27' },
+      { name: 'Clear', value: riskDist.clear, color: '#1D9E75' },
+    ]
     : [];
 
   const topCluster = clusters[0];
@@ -144,24 +137,24 @@ export default function OverviewPage() {
           {loading.overview
             ? renderLoading()
             : error.overview
-            ? renderError(error.overview)
-            : riskDist
-            ? (
-              <div style={{ display: 'flex', gap: 28, alignItems: 'center', padding: '0.5rem 0' }}>
-                <MiniPieChart data={pieData} size={130} innerRadius={38} outerRadius={60} />
-                <div style={{ flex: 1 }}>
-                  {pieData.map((d) => (
-                    <div key={d.name} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, borderBottom: '1px solid rgba(244,243,238,0.08)', paddingBottom: 6 }}>
-                      <span style={{ fontSize: 12, color: d.color, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{d.name}</span>
-                      <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13, color: '#FAFAF8', fontWeight: 600 }}>{d.value}</span>
+              ? renderError(error.overview)
+              : riskDist
+                ? (
+                  <div style={{ display: 'flex', gap: 28, alignItems: 'center', padding: '0.5rem 0' }}>
+                    <MiniPieChart data={pieData} size={130} innerRadius={38} outerRadius={60} />
+                    <div style={{ flex: 1 }}>
+                      {pieData.map((d) => (
+                        <div key={d.name} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10, borderBottom: '1px solid rgba(244,243,238,0.08)', paddingBottom: 6 }}>
+                          <span style={{ fontSize: 12, color: d.color, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{d.name}</span>
+                          <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 13, color: '#FAFAF8', fontWeight: 600 }}>{d.value}</span>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
-            )
-            : (
-              <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No data available.</div>
-            )}
+                  </div>
+                )
+                : (
+                  <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No data available.</div>
+                )}
         </div>
 
         {/* Highest-Risk Cluster */}
@@ -176,44 +169,44 @@ export default function OverviewPage() {
           {loading.clusters
             ? renderLoading()
             : error.clusters && !topCluster
-            ? renderError(error.clusters)
-            : topCluster
-            ? (
-              <div>
-                <div className="cluster-stat-box">
+              ? renderError(error.clusters)
+              : topCluster
+                ? (
                   <div>
-                    <div className="cluster-stat-num">{topCluster.customerCount}</div>
-                    <div className="cluster-stat-lbl">ACCOUNTS</div>
-                  </div>
-                  <div>
-                    <div className="cluster-stat-num">{topCluster.flaggedCustomerCount}</div>
-                    <div className="cluster-stat-lbl">FLAGGED HIGH RISK</div>
-                  </div>
-                  <div>
-                    <div className="cluster-stat-num" style={{ color: '#FAFAF8' }}>
-                      {topCluster.sharedEntities.reduce((a, e) => a + e.count, 0)}
+                    <div className="cluster-stat-box">
+                      <div>
+                        <div className="cluster-stat-num">{topCluster.customerCount}</div>
+                        <div className="cluster-stat-lbl">ACCOUNTS</div>
+                      </div>
+                      <div>
+                        <div className="cluster-stat-num">{topCluster.flaggedCustomerCount}</div>
+                        <div className="cluster-stat-lbl">FLAGGED HIGH RISK</div>
+                      </div>
+                      <div>
+                        <div className="cluster-stat-num" style={{ color: '#FAFAF8' }}>
+                          {topCluster.sharedEntities.reduce((a, e) => a + e.count, 0)}
+                        </div>
+                        <div className="cluster-stat-lbl">SHARED ENTITIES</div>
+                      </div>
                     </div>
-                    <div className="cluster-stat-lbl">SHARED ENTITIES</div>
-                  </div>
-                </div>
 
-                <div style={{ marginTop: '1.25rem' }}>
-                  <div style={{ fontSize: 10, fontFamily: 'JetBrains Mono, monospace', color: 'rgba(250,250,248,0.5)', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.08em' }}>
-                    CONNECTED RELATIONSHIPS:
+                    <div style={{ marginTop: '1.25rem' }}>
+                      <div style={{ fontSize: 10, fontFamily: 'JetBrains Mono, monospace', color: 'rgba(250,250,248,0.5)', textTransform: 'uppercase', marginBottom: 8, letterSpacing: '0.08em' }}>
+                        CONNECTED RELATIONSHIPS:
+                      </div>
+                      <div>
+                        {topCluster.sharedEntities.map((e) => (
+                          <span key={e.type} className="entity-pill">
+                            {e.type.toUpperCase()}: {e.count}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    {topCluster.sharedEntities.map((e) => (
-                      <span key={e.type} className="entity-pill">
-                        {e.type.toUpperCase()}: {e.count}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )
-            : (
-              <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No cluster evidence extracted yet.</div>
-            )}
+                )
+                : (
+                  <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>No cluster evidence extracted yet.</div>
+                )}
         </div>
       </div>
     </div>

@@ -743,3 +743,350 @@
     min-height: 320px;
   }
 }
+
+/* SECTION 4: SYSTEM ARCHITECTURE BLUEPRINT */
+.arch-blueprint-section {
+  width: 100%;
+  background-color: #F4F3EE;
+  padding: 5rem 3.5rem;
+  box-sizing: border-box;
+  border-top: 2px solid rgba(229, 52, 28, 0.25);
+}
+
+.arch-blueprint-container {
+  max-width: 1320px;
+  margin: 0 auto;
+}
+
+.arch-section-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #E5341C;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.arch-section-headline {
+  font-family: 'League Gothic', 'Bebas Neue', sans-serif;
+  font-size: clamp(2.5rem, 5vw, 4.2rem);
+  font-weight: 400;
+  color: #1A1A1A;
+  line-height: 0.95;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin: 0 0 3rem 0;
+}
+
+.arch-blueprint-canvas {
+  background-color: #F4F3EE;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Tier Outer Boxes */
+.arch-tier-box {
+  border: 1.5px dashed rgba(26, 26, 26, 0.45);
+  border-radius: 4px;
+  background-color: rgba(235, 233, 225, 0.4);
+  padding: 1.75rem;
+  box-sizing: border-box;
+}
+
+.arch-tier-header {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #E5341C;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 1.25rem;
+}
+
+/* Tier Grids */
+.arch-tier-grid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.tier-1-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.tier-2-grid,
+.tier-3-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* Card Styling */
+.arch-card {
+  background-color: #EBE9E1;
+  border: 1.5px solid rgba(26, 26, 26, 0.7);
+  border-radius: 4px;
+  padding: 1.25rem 1.1rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+}
+
+.arch-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+  border-color: #1A1A1A;
+}
+
+.arch-card.highlight-red-card {
+  border: 2px solid #E5341C;
+  background-color: rgba(229, 52, 28, 0.03);
+  animation: pulseRedBorder 3s infinite ease-in-out;
+}
+
+@keyframes pulseRedBorder {
+  0%, 100% { box-shadow: 0 0 0 rgba(229, 52, 28, 0); }
+  50% { box-shadow: 0 0 18px rgba(229, 52, 28, 0.25); }
+}
+
+.arch-card-number {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #E5341C;
+  margin-bottom: 0.25rem;
+}
+
+.arch-card-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #1A1A1A;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.arch-card-title.red-title {
+  color: #E5341C;
+}
+
+.arch-card-subhead {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #1A1A1A;
+  margin-top: 0.25rem;
+  letter-spacing: 0.03em;
+}
+
+.arch-card-subhead.red-subhead {
+  color: #E5341C;
+}
+
+.arch-card-list {
+  margin: 0.75rem 0 0 0;
+  padding-left: 0;
+  list-style: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.76rem;
+  color: #3A3A3A;
+  line-height: 1.6;
+}
+
+.arch-card-list li {
+  position: relative;
+  padding-left: 1rem;
+}
+
+.arch-card-list li::before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #1A1A1A;
+  font-weight: 800;
+}
+
+/* Tier 2 Banner Bar */
+.arch-banner-bar {
+  background-color: #0D0D0E;
+  color: #F4F3EE;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-align: center;
+  padding: 0.75rem 1rem;
+  border-radius: 3px;
+  margin-bottom: 1.25rem;
+  text-transform: uppercase;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.arch-banner-bar:hover {
+  transform: scale(1.005);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+/* Connectors */
+.arch-connector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0;
+}
+
+.arch-connector.simple-arrow {
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.arch-connector-line {
+  height: 24px;
+  width: 2px;
+  background-color: #1A1A1A;
+}
+
+.arch-connector-badge {
+  background-color: #F4F3EE;
+  border: 1.5px solid #1A1A1A;
+  border-radius: 4px;
+  padding: 0.35rem 1rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #1A1A1A;
+  letter-spacing: 0.08em;
+  position: relative;
+  overflow: hidden;
+}
+
+.arch-connector-badge::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(229, 52, 28, 0.25), transparent);
+  animation: sseStreamPulse 2.4s infinite linear;
+}
+
+@keyframes sseStreamPulse {
+  0% { left: -100%; }
+  100% { left: 200%; }
+}
+
+.arch-connector-arrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #E5341C;
+  line-height: 1;
+  animation: bounceArrow 1.8s infinite cubic-bezier(0.4, 0, 0.6, 1);
+}
+
+@keyframes bounceArrow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(5px); }
+}
+
+/* Bottom Specs Strip */
+.arch-specs-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  padding-top: 2.5rem;
+  margin-top: 1.5rem;
+  border-top: 1.5px solid rgba(26, 26, 26, 0.25);
+}
+
+.arch-spec-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  transition: transform 0.2s ease;
+}
+
+.arch-spec-col:hover {
+  transform: translateY(-2px);
+}
+
+.arch-spec-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #E5341C;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.arch-spec-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #1A1A1A;
+  letter-spacing: 0.02em;
+}
+
+/* Scroll Reveal Stagger for Architecture Section */
+.arch-blueprint-section.scroll-reveal .arch-tier-box {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1), transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.arch-blueprint-section.scroll-reveal.is-visible .arch-tier-box:nth-child(1) {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.1s;
+}
+
+.arch-blueprint-section.scroll-reveal.is-visible .arch-tier-box:nth-child(3) {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.3s;
+}
+
+.arch-blueprint-section.scroll-reveal.is-visible .arch-tier-box:nth-child(5) {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.5s;
+}
+
+.arch-blueprint-section.scroll-reveal .arch-specs-strip {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.6s, transform 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.6s;
+}
+
+.arch-blueprint-section.scroll-reveal.is-visible .arch-specs-strip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Responsive Rules for Architecture Diagram */
+@media (max-width: 1024px) {
+  .tier-1-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .tier-2-grid,
+  .tier-3-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .arch-specs-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .tier-1-grid,
+  .tier-2-grid,
+  .tier-3-grid {
+    grid-template-columns: 1fr;
+  }
+  .arch-specs-strip {
+    grid-template-columns: 1fr;
+  }
+}
