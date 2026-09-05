@@ -75,7 +75,7 @@ export default function LandingPage() {
       
       // Default hardcoded check or registered user check
       if ((cleanUser.toLowerCase() === 'paybros' && password === '1234') || (users[cleanUser.toLowerCase()] && users[cleanUser.toLowerCase()].password === password)) {
-        const apiKey = cleanUser.toLowerCase() === 'paybros' ? 'paybros_live_key_998124a' : users[cleanUser.toLowerCase()].apiKey;
+        const apiKey = cleanUser.toLowerCase() === 'paybros' ? 'cad_998124a3b81f' : users[cleanUser.toLowerCase()].apiKey;
         localStorage.setItem('hex_currentUser', JSON.stringify({ username: cleanUser, apiKey }));
         setAuthError('');
         navigate('/overview');
@@ -99,9 +99,9 @@ export default function LandingPage() {
         return;
       }
 
-      // Generate API key
+      // Generate API key formatted as cad_<12_hex_chars>
       const randomHex = Array.from({ length: 12 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-      const generatedApiKey = `paybros_key_${randomHex}`;
+      const generatedApiKey = `cad_${randomHex}`;
 
       // Save user
       users[cleanUser.toLowerCase()] = {

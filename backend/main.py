@@ -411,7 +411,11 @@ def _run_full_recompute_and_emit_events(
 # ── Webhook Authentication ────────────────────────────────────────────────────
 
 def _validate_api_key(x_api_key: str | None = Header(None, alias="X-API-Key")):
-    if x_api_key and x_api_key.strip() != DEMO_API_KEY and not x_api_key.strip().startswith("demo_api_key"):
+    if x_api_key and x_api_key.strip() != DEMO_API_KEY and not (
+        x_api_key.strip().startswith("demo_api_key") or
+        x_api_key.strip().startswith("paybros_") or
+        x_api_key.strip().startswith("cad_")
+    ):
         raise HTTPException(status_code=401, detail="Invalid X-API-Key credential")
 
 

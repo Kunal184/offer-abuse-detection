@@ -8,10 +8,10 @@ export default function SettingsPage() {
 
   // Read current user session if exists
   const storedUserRaw = localStorage.getItem('hex_currentUser');
-  const currentUser = storedUserRaw ? JSON.parse(storedUserRaw) : { username: 'Pay Bros', apiKey: 'paybros_live_key_998124a' };
+  const currentUser = storedUserRaw ? JSON.parse(storedUserRaw) : { username: 'Pay Bros', apiKey: 'cad_998124a3b81f' };
 
   const webhookUrl = 'http://localhost:8000/v1/events';
-  const apiKey = currentUser.apiKey || 'paybros_live_key_998124a';
+  const apiKey = currentUser.apiKey || 'cad_998124a3b81f';
 
   const handleCopyUrl = () => {
     navigator.clipboard.writeText(webhookUrl);
