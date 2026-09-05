@@ -89,6 +89,11 @@ export default function Shell() {
 function TopBar() {
   const [resetting, setResetting] = useState(false);
 
+  // Get active session user name
+  const storedUserRaw = localStorage.getItem('hex_currentUser');
+  const currentUser = storedUserRaw ? JSON.parse(storedUserRaw) : null;
+  const merchantName = currentUser?.username ? currentUser.username : 'Pay Bros';
+
   const handleReset = async () => {
     if (!window.confirm('Reset database state and re-seed clean baseline dataset (1,000 customers across 21 abuse rings)?')) {
       return;
@@ -106,7 +111,7 @@ function TopBar() {
   return (
     <header className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <div className="topbar-title">
-        <strong>Pay Bros</strong> · Merchant Operations
+        <strong>{merchantName}</strong> · Merchant Operations
       </div>
       <button
         className="btn"
