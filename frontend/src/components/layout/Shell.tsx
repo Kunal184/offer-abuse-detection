@@ -109,17 +109,30 @@ function TopBar() {
         <strong>Acme Retail</strong> · Merchant Operations
       </div>
       <button
-        className="btn btn-secondary"
-        style={{ fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: resetting ? 'wait' : 'pointer' }}
+        className="btn"
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          padding: '5px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          backgroundColor: '#FFFFFF',
+          color: '#101114',
+          border: '1px solid #D3CFCE',
+          borderRadius: 4,
+          cursor: resetting ? 'wait' : 'pointer',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        }}
         onClick={handleReset}
         disabled={resetting}
         title="Reset database to clean seed baseline dataset"
       >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#101114" strokeWidth="2.2">
           <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
           <path d="M3 3v5h5"/>
         </svg>
-        <span>{resetting ? 'Resetting Baseline...' : 'Reset Baseline Data'}</span>
+        <span style={{ color: '#101114', fontWeight: 700 }}>{resetting ? 'Resetting Baseline...' : 'Reset Baseline Data'}</span>
       </button>
     </header>
   );

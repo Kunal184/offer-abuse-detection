@@ -328,20 +328,20 @@
 }
 
 .grid-quadrant:hover {
-  background-color: #FFFFFF !important; /* Crisp pure white */
-  box-shadow: inset 0 0 0 1.5px #E5341C, 0 16px 36px rgba(229, 52, 28, 0.12);
+  background-color: #0D0D0E !important; /* Sleek matte black */
+  box-shadow: inset 0 0 0 1px rgba(229, 52, 28, 0.4), 0 16px 36px rgba(0, 0, 0, 0.4);
   z-index: 2;
 }
 
 .grid-quadrant:hover .quadrant-tag,
 .grid-quadrant:hover .quadrant-giant-number,
 .grid-quadrant:hover .quadrant-headline {
-  color: #E5341C;
+  color: #F4F3EE;
   transition: color 0.35s ease;
 }
 
 .grid-quadrant:hover .quadrant-subtext {
-  color: #101114;
+  color: #D3CFCE;
   transition: color 0.35s ease;
 }
 
