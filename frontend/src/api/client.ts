@@ -205,6 +205,14 @@ export async function healthCheck(): Promise<boolean> {
   }
 }
 
+export async function resetDatabase(): Promise<{ status: string; message: string }> {
+  const res = await fetch(`${BASE}/v1/reset`, { method: 'POST' });
+  if (!res.ok) {
+    throw new Error('Failed to reset database');
+  }
+  return res.json();
+}
+
 /* ─── Real-time Event Stream ──────────────────────────────────── */
 
 export function connectEventStream(onEvent: (event: import('../types').ActivityEvent) => void): () => void {

@@ -1,5 +1,7 @@
+import { useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAppStore } from '../../store/appStore';
+import { resetDatabase } from '../../api/client';
 
 const NAV_ITEMS = [
   { label: 'Overview', path: '/overview', icon: (
@@ -85,11 +87,40 @@ export default function Shell() {
 }
 
 function TopBar() {
+  const [resetting, setResetting] = useState(false);
+
+  const handleReset = async () => {
+    if (!window.confirm('Reset database state and re-seed clean baseline dataset (1,000 customers across 21 abuse rings)?')) {
+      return;
+    }
+    setResetting(true);
+    try {
+      await resetDatabase();
+      window.location.reload();
+    } catch (err) {
+      alert('Failed to reset database: ' + err);
+      setResetting(false);
+    }
+  };
+
   return (
-    <header className="topbar">
+    <header className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <div className="topbar-title">
         <strong>Acme Retail</strong> · Merchant Operations
       </div>
+      <button
+        className="btn btn-secondary"
+        style={{ fontSize: 11, padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 6, cursor: resetting ? 'wait' : 'pointer' }}
+        onClick={handleReset}
+        disabled={resetting}
+        title="Reset database to clean seed baseline dataset"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+          <path d="M3 3v5h5"/>
+        </svg>
+        <span>{resetting ? 'Resetting Baseline...' : 'Reset Baseline Data'}</span>
+      </button>
     </header>
   );
 }
