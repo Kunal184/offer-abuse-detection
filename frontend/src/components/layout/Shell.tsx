@@ -106,7 +106,7 @@ function TopBar() {
   return (
     <header className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
       <div className="topbar-title">
-        <strong>Acme Retail</strong> · Merchant Operations
+        <strong>Pay Bros</strong> · Merchant Operations
       </div>
       <button
         className="btn"
