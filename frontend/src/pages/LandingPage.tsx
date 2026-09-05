@@ -80,7 +80,6 @@ export default function LandingPage() {
             <div className={`login-dropdown-popover ${showLogin ? 'open' : ''}`}>
               <div className="login-dropdown-header">
                 <span className="login-dropdown-title">PAY BROS AUTHENTICATION</span>
-                <span className="login-dropdown-badge">DEMO</span>
               </div>
 
               <form onSubmit={handleLoginSubmit} className="login-dropdown-form">
