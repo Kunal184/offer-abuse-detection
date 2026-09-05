@@ -1187,25 +1187,15 @@ def get_analytics_metrics():
             "rocAuc": 0.9969,
             "prAuc": 0.9272,
         },
-        "canonicalHeldOut": {
-            "f1": 0.8955,
-            "precision": 1.0000,
-            "recall": 0.8108,
-            "rocAuc": 0.9961,
-            "prAuc": 0.9872,
-            "truePositives": 30,
-            "falsePositives": 0,
-            "trueNegatives": 133,
-            "falseNegatives": 7,
-        },
-        "f1": 0.8424,
-        "precision": 0.8069,
-        "recall": 0.8951,
-        "rocAuc": 0.9969,
-        "prAuc": 0.9272,
-        "auc": 0.9969,
+        "f1": 0.8955,
+        "precision": 1.0000,
+        "recall": 0.8108,
+        "rocAuc": 0.9961,
+        "prAuc": 0.9872,
+        "auc": 0.9961,
         "confusionMatrix": [[133, 0], [7, 30]],
     })
+
 
 
 @app.get("/v1/analytics/feature-importance")

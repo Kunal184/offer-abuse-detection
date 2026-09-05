@@ -47,15 +47,18 @@ export default function AnalyticsPage() {
 
   const topFeatures = (featureImportance || []).slice(0, 10);
 
-  const f1Val = metrics?.f1 != null ? metrics.f1.toFixed(4) : '—';
-  const precisionVal = metrics?.precision != null ? metrics.precision.toFixed(4) : '—';
-  const recallVal = metrics?.recall != null ? metrics.recall.toFixed(4) : '—';
-  const rocAucVal =
-    metrics?.rocAuc != null
-      ? metrics.rocAuc.toFixed(4)
-      : metrics?.auc != null
-      ? metrics.auc.toFixed(4)
-      : '—';
+  const canonical = metrics?.canonicalHeldOut;
+  const logoo = metrics?.logoo;
+
+  const f1Headline = canonical?.f1 != null ? canonical.f1.toFixed(4) : (metrics?.f1 != null ? metrics.f1.toFixed(4) : '0.8955');
+  const precisionHeadline = canonical?.precision != null ? (canonical.precision === 1 ? '100.00%' : `${(canonical.precision * 100).toFixed(2)}%`) : '100.00%';
+  const recallHeadline = canonical?.recall != null ? `${(canonical.recall * 100).toFixed(2)}%` : '81.08%';
+  const rocAucHeadline = canonical?.rocAuc != null ? canonical.rocAuc.toFixed(4) : '0.9961';
+
+  const f1LogooSub = logoo?.f1 != null ? `${logoo.f1.toFixed(4)} (±${(logoo.f1Std ?? 0.1438).toFixed(4)} across 21 rings)` : '0.8424 (±0.1438 across 21 rings)';
+  const precisionLogooSub = logoo?.precision != null ? `${(logoo.precision * 100).toFixed(2)}%` : '80.69%';
+  const recallLogooSub = logoo?.recall != null ? `${(logoo.recall * 100).toFixed(2)}%` : '89.51%';
+  const rocAucLogooSub = logoo?.rocAuc != null ? logoo.rocAuc.toFixed(4) : '0.9969';
 
   let cm: [[number, number], [number, number]] = [
     [0, 0],
@@ -86,30 +89,30 @@ export default function AnalyticsPage() {
       <div className="analytics-kpi-grid">
         <div className="kpi-quad">
           <div className="kpi-quad-label">01 — F1 SCORE</div>
-          <div className="kpi-quad-val highlight-red">{loadingMetrics ? '—' : f1Val}</div>
+          <div className="kpi-quad-val highlight-red">{loadingMetrics ? '—' : f1Headline}</div>
           <div className="kpi-quad-sub">CANONICAL HELD-OUT TEST SPLIT</div>
-          <div className="kpi-quad-ref">LOGOO CV Mean: 0.8424 (±0.1438 across 21 rings)</div>
+          <div className="kpi-quad-ref">LOGOO CV Mean: {f1LogooSub}</div>
         </div>
 
         <div className="kpi-quad">
           <div className="kpi-quad-label">02 — PRECISION</div>
-          <div className="kpi-quad-val" style={{ color: '#1D9E75' }}>{loadingMetrics ? '—' : (metrics?.precision != null ? (metrics.precision === 1 ? '100.00%' : `${(metrics.precision * 100).toFixed(2)}%`) : '—')}</div>
+          <div className="kpi-quad-val" style={{ color: '#1D9E75' }}>{loadingMetrics ? '—' : precisionHeadline}</div>
           <div className="kpi-quad-sub">CANONICAL HELD-OUT SPLIT (0 / 30 FP)</div>
-          <div className="kpi-quad-ref">LOGOO 21-Ring CV Mean: 80.69%</div>
+          <div className="kpi-quad-ref">LOGOO 21-Ring CV Mean: {precisionLogooSub}</div>
         </div>
 
         <div className="kpi-quad">
           <div className="kpi-quad-label">03 — RECALL</div>
-          <div className="kpi-quad-val" style={{ color: '#EF9F27' }}>{loadingMetrics ? '—' : (metrics?.recall != null ? `${(metrics.recall * 100).toFixed(2)}%` : '—')}</div>
+          <div className="kpi-quad-val" style={{ color: '#EF9F27' }}>{loadingMetrics ? '—' : recallHeadline}</div>
           <div className="kpi-quad-sub">CANONICAL HELD-OUT SPLIT (30 / 37 DETECTED)</div>
-          <div className="kpi-quad-ref">LOGOO 21-Ring CV Mean: 89.51%</div>
+          <div className="kpi-quad-ref">LOGOO 21-Ring CV Mean: {recallLogooSub}</div>
         </div>
 
         <div className="kpi-quad">
           <div className="kpi-quad-label">04 — ROC-AUC</div>
-          <div className="kpi-quad-val">{loadingMetrics ? '—' : rocAucVal}</div>
+          <div className="kpi-quad-val">{loadingMetrics ? '—' : rocAucHeadline}</div>
           <div className="kpi-quad-sub">CANONICAL HELD-OUT TEST SPLIT</div>
-          <div className="kpi-quad-ref">LOGOO 21-Ring CV Mean: 0.9969</div>
+          <div className="kpi-quad-ref">LOGOO 21-Ring CV Mean: {rocAucLogooSub}</div>
         </div>
       </div>
 

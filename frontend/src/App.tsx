@@ -6,7 +6,6 @@ import CustomersPage from './pages/Customers';
 import CustomerDetailPage from './pages/CustomerDetail';
 import AbuseClustersPage from './pages/AbuseClusters';
 import ActivityPage from './pages/Activity';
-import AnalyticsPage from './pages/Analytics';
 import SettingsPage from './pages/Settings';
 
 export default function App() {
@@ -20,7 +19,6 @@ export default function App() {
           <Route path="/customers/:id" element={<CustomerDetailPage />} />
           <Route path="/clusters" element={<AbuseClustersPage />} />
           <Route path="/activity" element={<ActivityPage />} />
-          <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>

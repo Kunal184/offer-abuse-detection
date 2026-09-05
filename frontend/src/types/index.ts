@@ -184,6 +184,19 @@ export interface ConfusionMatrixDict {
   falseNegatives?: number;
 }
 
+export interface MetricDetail {
+  f1: number;
+  f1Std?: number;
+  precision: number;
+  recall: number;
+  rocAuc: number;
+  prAuc: number;
+  truePositives?: number;
+  falsePositives?: number;
+  trueNegatives?: number;
+  falseNegatives?: number;
+}
+
 export interface ModelMetrics {
   f1: number;
   precision: number;
@@ -191,6 +204,8 @@ export interface ModelMetrics {
   rocAuc?: number;
   auc?: number;
   prAuc?: number;
+  canonicalHeldOut?: MetricDetail;
+  logoo?: MetricDetail;
   confusionMatrix: [[number, number], [number, number]] | ConfusionMatrixDict;
 }
 
