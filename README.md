@@ -1,10 +1,10 @@
-# 🛡️ Offer Abuse Detection & Real-Time Graph Intelligence Platform
+# Offer Abuse Detection & Real-Time Graph Intelligence Platform
 
 An end-to-end Machine Learning and Graph Resolution Engine designed to detect multi-account promo hoarding, referral fraud, and sybil abuse rings in real-time. Built with **FastAPI**, **React (Vite + D3.js)**, **NetworkX**, and a **Group-Aware XGBoost Classifier**.
 
 ---
 
-## 🏗️ System Architecture
+## System Architecture
 
 ![System Architecture Blueprint](docs/architecture_diagram.png)
 
@@ -19,7 +19,7 @@ The platform is structured into three clean, decoupled tiers:
 2. **Tier 2 · FastAPI Backend & Multi-Tenant Orchestration Layer**:
    - **Ingestion & Idempotency (`POST /v1/events`)**: Handles customer, order, redemption, device, IP, address, and payment events with duplicate suppression.
    - **Graph Resolution Engine (NetworkX Multi-Graph)**: Dynamically constructs identity linkages across 4 edge types (*Hardware*, *Payment*, *IP*, *Address*).
-   - **Real-Time Event Bus (SSE Stream)**: Broadcasts live risk score diffing (`CLEAR` $\rightarrow$ `HIGH RISK`) to connected frontend clients via `GET /v1/events/stream`.
+   - **Real-Time Event Bus (SSE Stream)**: Broadcasts live risk score diffing (`CLEAR` -> `HIGH RISK`) to connected frontend clients via `GET /v1/events/stream`.
 
 3. **Tier 3 · Data Persistence & ML Inference Pipeline**:
    - **Storage & Persistence**: SQLite DB + CSV dataset engine storing entity mappings and activity logs.
@@ -28,7 +28,7 @@ The platform is structured into three clean, decoupled tiers:
 
 ---
 
-## 🎯 The Problem & Business Narrative
+## The Problem & Business Narrative
 
 E-commerce businesses spend billions on acquisition discounts, referral rewards, and sign-up promos. However, malicious actors exploit these offers through **Sybil Promo Hoarding**:
 - Creating dozens of fake accounts using throwaway emails.
@@ -43,7 +43,7 @@ Our engine combines **Multi-Graph Entity Resolution** with a **Group-Aware XGBoo
 
 ---
 
-## 📊 Model Performance & Validation Rigor
+## Model Performance & Validation Rigor
 
 We rigorously evaluated three model architectures (**Logistic Regression**, **Random Forest**, and **XGBoost**) under both canonical held-out splits and Leave-One-Group-Out Cross Validation.
 
@@ -55,11 +55,11 @@ We rigorously evaluated three model architectures (**Logistic Regression**, **Ra
 | **Recall** | **88.4%** | **88.4%** |
 | **F1-Score** | **93.8%** | **89.5%** |
 
-> 🛡️ **Zero False Positives Guarantee**: At our default decision threshold of `0.50`, the model achieved **100% Precision**, ensuring honest shoppers are never blocked from redeeming valid offers.
+> **Zero False Positives Guarantee**: At our default decision threshold of `0.50`, the model achieved **100% Precision**, ensuring honest shoppers are never blocked from redeeming valid offers.
 
 ---
 
-## 🔬 Master Feature Reference Table
+## Master Feature Reference Table
 
 The feature pipeline converts raw transactional and graph data into **21 vectorized numerical features**:
 
@@ -82,7 +82,7 @@ The feature pipeline converts raw transactional and graph data into **21 vectori
 
 ---
 
-## 🧠 Model Explainability (SHAP Integration)
+## Model Explainability (SHAP Integration)
 
 To eliminate black-box opacity, every prediction API response returns additive **TreeSHAP feature attributions**:
 
@@ -106,7 +106,7 @@ To eliminate black-box opacity, every prediction API response returns additive *
 
 ---
 
-## ⚡ Step-by-Step Reproduction Guide
+## Step-by-Step Reproduction Guide
 
 Follow these steps to run the complete stack locally on your machine:
 
@@ -148,7 +148,7 @@ npm run dev
 
 ---
 
-## 🧪 Running Tests & Validation Scripts
+## Running Tests & Validation Scripts
 
 Execute the comprehensive test suite and evaluation scripts from the project root:
 
@@ -165,6 +165,6 @@ python -m ml.audit_shortcut_ratios
 
 ---
 
-## 📄 License & Attribution
+## License & Attribution
 
 Developed by **Kunal184**. Open-source under the MIT License.
